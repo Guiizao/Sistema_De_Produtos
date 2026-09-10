@@ -28,7 +28,12 @@ import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from swboost import __version__, boost, browsers, settings as settings_module  # noqa: E402
+# Apenas modulos de biblioteca padrao no topo: o `--check` precisa conseguir
+# rodar numa instalacao sem Flask, que e exatamente o problema que ele
+# diagnostica. O `swboost.boost` (que traz o Flask) e importado la embaixo,
+# so na hora de realmente subir o servidor.
+from swboost import __version__, browsers, gamedir  # noqa: E402
+from swboost import settings as settings_module  # noqa: E402
 
 BANNER = r"""
   ____             _       _  __        __
@@ -136,9 +141,9 @@ def run_check(args: argparse.Namespace, cfg) -> int:
     print(f"  Python .................. {sys.version.split()[0]}")
 
     try:
-        game_dir = boost.locate_game_dir(args.game_dir)
+        game_dir = gamedir.locate_game_dir(args.game_dir)
         print(f"  Pasta do jogo ........... {game_dir}")
-    except boost.BoostError as exc:
+    except gamedir.BoostError as exc:
         print(f"  Pasta do jogo ........... NAO ENCONTRADA\n\n{exc}")
         return 1
 
@@ -176,7 +181,7 @@ def run_check(args: argparse.Namespace, cfg) -> int:
     else:
         print("  Pasta saves/ ........... OK")
 
-    free = boost.port_is_free(cfg.host, cfg.port)
+    free = gamedir.port_is_free(cfg.host, cfg.port)
     print(f"  Porta {cfg.port} .............. {'livre' if free else 'EM USO'}")
     if not free:
         print("      [!] Outro processo ja usa essa porta (o jogo ja esta aberto?).")
@@ -270,8 +275,8 @@ def main(argv=None) -> int:
 
     if args.list_browsers:
         try:
-            game_dir = boost.locate_game_dir(args.game_dir)
-        except boost.BoostError:
+            game_dir = gamedir.locate_game_dir(args.game_dir)
+        except gamedir.BoostError:
             game_dir = os.getcwd()
         found = browsers.discover(game_dir)
         if not found:
@@ -287,13 +292,22 @@ def main(argv=None) -> int:
     if args.exe:
         return run_bundle(args, cfg)
 
-    if not boost.port_is_free(cfg.host, cfg.port):
+    if not gamedir.port_is_free(cfg.host, cfg.port):
         print(f"[!] A porta {cfg.port} ja esta em uso. O jogo ja esta aberto?")
         print(f"    Use --port OUTRA para subir em outra porta.")
         return 1
 
     print(BANNER)
     print(f"  SW Boost {__version__}\n")
+
+    # Só agora o Flask é necessário de verdade.
+    try:
+        from swboost import boost
+    except ImportError as exc:
+        print(f"[!] Falta uma dependencia: {exc}")
+        print("    Rode o jogar.bat (Windows) ou ./jogar.sh (Linux), que")
+        print("    instalam tudo num ambiente virtual dentro da pasta do jogo.")
+        return 1
 
     try:
         boosted = boost.apply(cfg, args.game_dir)

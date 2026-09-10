@@ -311,7 +311,7 @@ também verifica a cada build que o binário não pede administrador.
 python -m unittest discover -s tests -v
 ```
 
-58 testes, sem dependência dos arquivos do jogo. Cobrem a leitura e reescrita
+62 testes, sem dependência dos arquivos do jogo. Cobrem a leitura e reescrita
 de SWF, o cache de taxa de quadros, o ajuste do `<embed>`, a configuração, o
 filtro de console, a gravação atômica de saves, o gerador de tradução, a URL
 do modo projector e os caminhos de um build congelado.
@@ -330,6 +330,7 @@ swboost/
   swf.py                 leitura e reescrita do cabeçalho SWF
   saves.py               gravação atômica e backups
   browsers.py            detecção de navegador e projector com Flash
+  gamedir.py             achar a pasta do jogo (sem dependências)
   console.py             filtro do log
   settings.py            swboost.ini, variáveis de ambiente, argumentos
 build_exe/

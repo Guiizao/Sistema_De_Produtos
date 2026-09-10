@@ -20,7 +20,9 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from swboost import boost  # noqa: E402
+# Importa so o modulo sem dependencias: o instalador roda ANTES de qualquer
+# `pip install`, entao nao pode exigir Flask para copiar arquivos.
+from swboost.gamedir import BoostError, locate_game_dir  # noqa: E402
 
 # O que vai para a pasta do jogo, como (origem, nome no destino).
 # `tests/` fica de fora de proposito. O nosso README vira SWBOOST.md e o nosso
@@ -71,8 +73,8 @@ def perguntar_pasta_do_jogo() -> str | None:
             return None
 
         try:
-            return boost.locate_game_dir(caminho)
-        except boost.BoostError as exc:
+            return locate_game_dir(caminho)
+        except BoostError as exc:
             print(f"\n  [!] {exc}\n")
 
     return None
@@ -90,8 +92,8 @@ def main(argv=None) -> int:
     source = os.path.dirname(os.path.abspath(__file__))
 
     try:
-        destination = boost.locate_game_dir(args.destino)
-    except boost.BoostError as exc:
+        destination = locate_game_dir(args.destino)
+    except BoostError as exc:
         if args.destino:
             # Deu um caminho explicito e ele nao serve: nao adianta perguntar.
             print(f"[!] {exc}")

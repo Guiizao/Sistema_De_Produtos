@@ -642,5 +642,82 @@ class TestCaminhoDigitado(unittest.TestCase):
         self.assertEqual(instalador._limpar_caminho("/home/user/jogo"), "/home/user/jogo")
 
 
+# --------------------------------------------------------------------------
+# funcionar antes de o Flask existir
+# --------------------------------------------------------------------------
+
+
+BLOQUEIO_FLASK = """
+import sys
+
+class SemFlask:
+    def find_spec(self, nome, caminho=None, alvo=None):
+        if nome == "flask" or nome.startswith("flask."):
+            raise ImportError("No module named 'flask'")
+        return None
+
+sys.meta_path.insert(0, SemFlask())
+sys.path.insert(0, {raiz!r})
+"""
+
+
+class TestSemFlaskInstalado(unittest.TestCase):
+    """O instalador e o --check rodam antes de qualquer pip install.
+
+    Regressao: `instalar.py` importava `swboost.boost`, que importa
+    `swboost.web`, que importa Flask - e o instalador, que so copia arquivos,
+    morria com ModuleNotFoundError numa maquina limpa. O `--check`, que existe
+    para dizer o que falta instalar, quebrava do mesmo jeito.
+    """
+
+    def setUp(self):
+        self.raiz = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    def _rodar(self, codigo: str):
+        import subprocess
+
+        script = BLOQUEIO_FLASK.format(raiz=self.raiz) + codigo
+        return subprocess.run(
+            [sys.executable, "-c", script],
+            capture_output=True, text=True, cwd=self.raiz, timeout=60,
+        )
+
+    def test_o_bloqueio_do_teste_funciona(self):
+        # Sem isto, o teste passaria por acidente numa maquina com Flask.
+        saida = self._rodar("import flask")
+        self.assertNotEqual(saida.returncode, 0)
+        self.assertIn("No module named 'flask'", saida.stderr)
+
+    def test_gamedir_nao_depende_de_flask(self):
+        saida = self._rodar(
+            "from swboost.gamedir import locate_game_dir, port_is_free, BoostError\n"
+            "print('ok')"
+        )
+        self.assertEqual(saida.returncode, 0, saida.stderr)
+        self.assertIn("ok", saida.stdout)
+
+    def test_instalador_importa_sem_flask(self):
+        saida = self._rodar(
+            "import importlib.util, os\n"
+            f"spec = importlib.util.spec_from_file_location('instalar', os.path.join({self.raiz!r}, 'instalar.py'))\n"
+            "m = importlib.util.module_from_spec(spec)\n"
+            "spec.loader.exec_module(m)\n"
+            "print('ok', callable(m.main))"
+        )
+        self.assertEqual(saida.returncode, 0, saida.stderr)
+        self.assertIn("ok True", saida.stdout)
+
+    def test_check_diagnostica_em_vez_de_quebrar(self):
+        saida = self._rodar(
+            "import importlib.util, os, sys\n"
+            f"spec = importlib.util.spec_from_file_location('play', os.path.join({self.raiz!r}, 'play.py'))\n"
+            "m = importlib.util.module_from_spec(spec)\n"
+            "spec.loader.exec_module(m)\n"
+            "sys.exit(0 if callable(m.run_check) else 1)"
+        )
+        self.assertEqual(saida.returncode, 0, saida.stderr)
+        self.assertNotIn("ModuleNotFoundError", saida.stderr)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
