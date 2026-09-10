@@ -25,6 +25,24 @@ Referência completa. Para simplesmente jogar, o [README](README.md) basta.
 
 ## Como funciona
 
+### As duas pastas
+
+O SW Boost é entregue como uma pasta separada só porque precisa vir de algum
+lugar. O `instalar.py` copia o que interessa para dentro da pasta do jogo, e
+**a pasta do boost pode ser apagada depois**. Daí em diante existe uma pasta
+só: a do jogo.
+
+Quem prefere não copiar nada pode rodar de fora, apontando para o jogo:
+
+```bash
+python play.py --game-dir /caminho/do/socialwarriors
+```
+
+Funciona igual, mas aí você não tem o `jogar.bat` dentro da pasta do jogo
+para dar clique duplo.
+
+### O que o boost faz com o servidor
+
 O SW Boost **não altera nenhum arquivo do jogo**. O `play.py` importa o
 `server.py` do projeto original, pega o objeto Flask que ele já montou e
 troca funções em cima dele em memória.
@@ -293,7 +311,7 @@ também verifica a cada build que o binário não pede administrador.
 python -m unittest discover -s tests -v
 ```
 
-52 testes, sem dependência dos arquivos do jogo. Cobrem a leitura e reescrita
+58 testes, sem dependência dos arquivos do jogo. Cobrem a leitura e reescrita
 de SWF, o cache de taxa de quadros, o ajuste do `<embed>`, a configuração, o
 filtro de console, a gravação atômica de saves, o gerador de tradução, a URL
 do modo projector e os caminhos de um build congelado.

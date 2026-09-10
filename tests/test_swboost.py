@@ -39,6 +39,21 @@ def _carregar_ferramenta(nome: str):
 traducao = _carregar_ferramenta("gerar_mod_traducao.py")
 
 
+def _carregar_instalador():
+    import importlib.util
+
+    caminho = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "instalar.py"
+    )
+    spec = importlib.util.spec_from_file_location("instalar", caminho)
+    modulo = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(modulo)
+    return modulo
+
+
+instalador = _carregar_instalador()
+
+
 # --------------------------------------------------------------------------
 # auxiliares
 # --------------------------------------------------------------------------
@@ -590,6 +605,41 @@ class TestGeradorTraducao(unittest.TestCase):
             traducao.ativar_no_mods_txt(caminho, "ptbr")
             with open(caminho, encoding="utf-8") as handle:
                 self.assertEqual(handle.read().count("ptbr"), 1)
+
+
+# --------------------------------------------------------------------------
+# instalar.py - caminho digitado ou arrastado pelo usuario
+# --------------------------------------------------------------------------
+
+
+class TestCaminhoDigitado(unittest.TestCase):
+    """Arrastar uma pasta para o terminal nao entrega um caminho limpo."""
+
+    def test_tira_aspas_do_arrastar_no_prompt(self):
+        # O Prompt de Comando poe aspas quando o caminho tem espaco.
+        self.assertEqual(
+            instalador._limpar_caminho('"C:\\Users\\Aula\\Meus Videos\\jogo"'),
+            "C:\\Users\\Aula\\Meus Videos\\jogo",
+        )
+
+    def test_tira_o_e_comercial_do_powershell(self):
+        self.assertEqual(
+            instalador._limpar_caminho('& "C:\\pasta\\jogo"'), "C:\\pasta\\jogo"
+        )
+
+    def test_tira_barra_do_fim(self):
+        self.assertEqual(instalador._limpar_caminho("C:\\jogo\\"), "C:\\jogo")
+        self.assertEqual(instalador._limpar_caminho("/home/user/jogo/"), "/home/user/jogo")
+
+    def test_tira_espacos_em_volta(self):
+        self.assertEqual(instalador._limpar_caminho("   /home/user/jogo  "), "/home/user/jogo")
+
+    def test_resposta_vazia_continua_vazia(self):
+        # Enter sem digitar nada significa desistir.
+        self.assertEqual(instalador._limpar_caminho("   "), "")
+
+    def test_nao_estraga_um_caminho_ja_limpo(self):
+        self.assertEqual(instalador._limpar_caminho("/home/user/jogo"), "/home/user/jogo")
 
 
 if __name__ == "__main__":

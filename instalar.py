@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Copia o SW Boost para dentro da pasta do Social Wars.
 
-Nao e obrigatorio: o `play.py` funciona de fora da pasta do jogo com
-`--game-dir CAMINHO`. Instalar deixa tudo junto, o que e mais pratico para
-criar um atalho na area de trabalho.
+Depois de instalar, ESTA pasta (a do boost) pode ser apagada: tudo o que o
+jogo precisa passa a morar dentro da pasta dele.
 
-    python instalar.py /caminho/para/socialwarriors
+    python instalar.py                          # pergunta onde esta o jogo
+    python instalar.py /caminho/do/socialwarriors
 
 Nenhum arquivo do jogo e alterado ou apagado. Se algum nome ja existir na
 pasta de destino, o script avisa e para (use --force para sobrescrever).
@@ -41,6 +41,43 @@ PAYLOAD = (
 )
 
 
+def _limpar_caminho(texto: str) -> str:
+    """Normaliza um caminho colado ou arrastado para a janela do terminal.
+
+    Arrastar uma pasta para o Prompt de Comando cola o caminho entre aspas
+    quando ele tem espacos; o PowerShell as vezes acrescenta um `& `.
+    """
+    texto = texto.strip()
+    if texto.startswith("& "):
+        texto = texto[2:].strip()
+    return texto.strip("\"'").rstrip("\\/") or texto.strip()
+
+
+def perguntar_pasta_do_jogo() -> str | None:
+    """Pergunta onde esta o jogo, com ate tres tentativas."""
+    print("\n  Onde esta a pasta do Social Wars?")
+    print("  (a pasta que tem o server.py e a pasta assets)")
+    print("\n  Dica: arraste a pasta para esta janela e aperte Enter.")
+    print("  Para desistir, aperte Enter sem digitar nada.\n")
+
+    for _ in range(3):
+        try:
+            resposta = input("  Caminho: ")
+        except (EOFError, KeyboardInterrupt):
+            return None
+
+        caminho = _limpar_caminho(resposta)
+        if not caminho:
+            return None
+
+        try:
+            return boost.locate_game_dir(caminho)
+        except boost.BoostError as exc:
+            print(f"\n  [!] {exc}\n")
+
+    return None
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -55,8 +92,15 @@ def main(argv=None) -> int:
     try:
         destination = boost.locate_game_dir(args.destino)
     except boost.BoostError as exc:
-        print(f"[!] {exc}")
-        return 1
+        if args.destino:
+            # Deu um caminho explicito e ele nao serve: nao adianta perguntar.
+            print(f"[!] {exc}")
+            return 1
+        destination = perguntar_pasta_do_jogo()
+        if destination is None:
+            print("\n[!] Instalacao cancelada.")
+            print("    Rode de novo assim: python instalar.py CAMINHO-DA-PASTA-DO-JOGO")
+            return 1
 
     if os.path.abspath(destination) == source:
         print("[+] O SW Boost ja esta dentro da pasta do jogo. Nada a fazer.")
@@ -97,9 +141,16 @@ def main(argv=None) -> int:
         print("\n[+] --dry-run: nada foi copiado.")
         return 0
 
-    print("\n[+] Pronto. Agora, dentro da pasta do jogo:")
-    print("      Windows ....: clique duas vezes em jogar.bat")
-    print("      GNU/Linux ..: ./jogar.sh")
+    print("\n[+] Pronto!\n")
+    print(f"    A partir de agora so importa esta pasta:")
+    print(f"      {destination}\n")
+    print("    Para jogar, entre nela e:")
+    if os.name == "nt":
+        print("      clique duas vezes em jogar.bat")
+    else:
+        print("      ./jogar.sh")
+    print(f"\n    Esta pasta aqui ({os.path.basename(source)}) ja cumpriu o papel")
+    print("    e pode ser apagada.")
     return 0
 
 
