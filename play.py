@@ -17,11 +17,14 @@ from __future__ import annotations
 import argparse
 import glob
 import os
+import json
 import socket
 import subprocess
 import sys
 import threading
 import time
+import urllib.error
+import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -55,6 +58,8 @@ def parse_args(argv=None) -> argparse.Namespace:
     parser.add_argument("--no-browser", action="store_true", help="nao abrir navegador")
     parser.add_argument("--no-quickplay", action="store_true",
                         help="abrir a tela de login em vez de entrar no ultimo save")
+    parser.add_argument("--projector", action="store_true",
+                        help="abrir com o Flash Player standalone, sem navegador nenhum")
     parser.add_argument("--server", choices=("auto", "waitress", "flask"),
                         help="servidor HTTP a usar")
     parser.add_argument("--verbose", action="store_true",
@@ -87,6 +92,23 @@ def build_settings(args: argparse.Namespace, config_dir: str):
     if args.verbose:
         overrides["quiet"] = False
     return settings_module.load(config_dir, {k: v for k, v in overrides.items() if v is not None})
+
+
+def projector_url(host: str, port: int) -> str | None:
+    """Pede ao servidor a URL que o Flash Player standalone abre direto."""
+    endereco = f"http://{host}:{port}/swboost/projector"
+    try:
+        with urllib.request.urlopen(endereco, timeout=15) as resposta:
+            return json.loads(resposta.read().decode("utf-8")).get("url")
+    except (urllib.error.URLError, ValueError, OSError):
+        return None
+
+
+def como_iniciar() -> str:
+    """Como o jogador roda isto de novo - muda se estamos num executavel."""
+    if getattr(sys, "frozen", False):
+        return os.path.basename(sys.executable)
+    return "python play.py"
 
 
 def wait_for_server(host: str, port: int, timeout: float = 90.0) -> bool:
@@ -162,19 +184,23 @@ def run_check(args: argparse.Namespace, cfg) -> int:
 
     found = browsers.discover(game_dir)
     if found:
-        print(f"  Navegador Flash ......... {found[0].describe()}")
+        print(f"  Flash ................... {found[0].describe()}")
         for extra in found[1:]:
             print(f"                            (tambem: {extra.describe()})")
+        if found[0].kind == "projector":
+            print("      E um Flash Player standalone: abre o jogo sem navegador.")
     else:
-        print("  Navegador Flash ......... nenhum encontrado")
-        print("      Instale o FlashBrowser ou copie um navegador portatil")
-        print(f"      para {os.path.join(game_dir, 'browser')}/")
+        print("  Flash ................... nenhum encontrado")
+        print("      Sem permissao de administrador? Use o Flash Player standalone:")
+        print("      e um unico executavel, nao instala nada.")
+        print(f"      Coloque-o em {os.path.join(game_dir, 'browser')}/ e rode de novo.")
+        print("      Detalhes em SWBOOST.md, secao 'Sem permissao de administrador'.")
 
     print()
     if problems:
         print(f"  {problems} problema(s) encontrado(s).")
     else:
-        print("  Tudo pronto. Rode: python play.py")
+        print(f"  Tudo pronto. Rode: {como_iniciar()}")
     return 1 if problems else 0
 
 
@@ -292,7 +318,22 @@ def main(argv=None) -> int:
 
     if cfg.open_browser:
         browser = browsers.resolve(cfg.browser, boosted.game_dir)
-        if browser is None and cfg.browser.lower() == "auto":
+        usar_projector = args.projector or (browser is not None and browser.kind == "projector")
+
+        if usar_projector:
+            direto = projector_url(cfg.host, cfg.port)
+            if direto is None:
+                print("\n  [!] Ainda nao existe nenhuma vila. Crie uma primeiro:")
+                print(f"      http://{cfg.host}:{cfg.port}/new.html")
+            elif browser is None:
+                print("\n  [!] Nao encontrei o Flash Player standalone.")
+                print("      Coloque-o em browser/ dentro da pasta do jogo.")
+                print("      Se voce ja tem um, abra este endereco nele:")
+                print(f"      {direto}")
+            else:
+                print(f"  Flash .......... {browsers.open_url(direto, browser)}")
+                print("                   (modo projector: sem navegador)")
+        elif browser is None and cfg.browser.lower() == "auto":
             print("\n  [!] Nenhum navegador com Flash encontrado.")
             print("      Abra manualmente no seu navegador Flash:")
             print(f"      {url}")

@@ -14,6 +14,7 @@ import os
 import re
 import threading
 import time
+from urllib.parse import urlencode
 
 from flask import Response, redirect, request, send_file, send_from_directory
 
@@ -246,43 +247,80 @@ def install_gzip(app, settings: Settings) -> None:
 
 DEFAULT_GAMEVERSION = "Basesec_1.5.4.swf"
 
+# Estes parametros espelham os flashvars do `templates/play.html` do jogo.
+# Sao usados no modo projector, onde nao existe pagina HTML: o Flash Player
+# standalone le tudo de `loaderInfo.parameters`, ou seja, da query string.
+FLASHVARS_FIXOS = {
+    "spdebug": "notnull",
+    "skiphash12341": "notnull",
+    "user_key": "123456789",
+    "language": "en",
+    "accessToken": (
+        "AAABbZAm0wdMUBALsOrR0Ho68CLjaOT8SV3vftKg9mbo1zZColaW5FljRVaLxPGxXXnm1M98"
+        "mTZCAttcQ4GHwvSyXfsyxYmvKMH8Hmn5iliSPnjvIsZA6"
+    ),
+    "sex": "m",
+    "lastLoggedIn": "1349266517",
+    "dailyBonus": "0",
+    "forceSyncError": "1",
+    "forceAttackReload": "0",
+    "forceQuestReload": "0",
+}
 
-def install_quickplay(app, settings: Settings, sessions_module, state_path: str) -> None:
-    """Rota /jogar: entra direto no ultimo save, sem passar pela tela de login."""
-    from flask import session as flask_session
 
-    def _remember(userid: str, gameversion: str) -> None:
+class SaveChooser:
+    """Escolhe em qual vila entrar e lembra a ultima escolha."""
+
+    def __init__(self, sessions_module, state_path: str) -> None:
+        self.sessions = sessions_module
+        self.state_path = state_path
+
+    def remember(self, userid: str, gameversion: str) -> None:
         try:
-            os.makedirs(os.path.dirname(state_path) or ".", exist_ok=True)
-            with open(state_path, "w", encoding="utf-8") as handle:
+            os.makedirs(os.path.dirname(self.state_path) or ".", exist_ok=True)
+            with open(self.state_path, "w", encoding="utf-8") as handle:
                 json.dump({"userid": userid, "gameversion": gameversion}, handle)
         except OSError:
             pass
 
-    def _recall() -> tuple[str | None, str]:
+    def recall(self) -> tuple:
         try:
-            with open(state_path, encoding="utf-8") as handle:
+            with open(self.state_path, encoding="utf-8") as handle:
                 data = json.load(handle)
             return data.get("userid"), data.get("gameversion") or DEFAULT_GAMEVERSION
         except (OSError, ValueError):
             return None, DEFAULT_GAMEVERSION
 
+    def choose(self, wanted: str | None = None, gameversion: str | None = None) -> tuple:
+        """Devolve (userid, gameversion). userid e None se nao existir save."""
+        self.sessions.load_saves()
+        available = self.sessions.all_saves_userid()
+        if not available:
+            return None, gameversion or DEFAULT_GAMEVERSION
+
+        remembered, lembrada = self.recall()
+        userid = wanted or (remembered if remembered in available else None) or available[0]
+        return userid, gameversion or lembrada
+
+
+def install_quickplay(app, settings: Settings, sessions_module, state_path: str) -> SaveChooser:
+    """Rota /jogar: entra direto no ultimo save, sem passar pela tela de login."""
+    from flask import session as flask_session
+
+    chooser = SaveChooser(sessions_module, state_path)
+
     @app.route("/jogar")
     @app.route("/quickplay")
     def swboost_quickplay():
-        sessions_module.load_saves()
-        available = sessions_module.all_saves_userid()
-        if not available:
+        userid, gameversion = chooser.choose(
+            request.args.get("userid"), request.args.get("gameversion")
+        )
+        if userid is None:
             return redirect("/new.html")
 
-        wanted = request.args.get("userid")
-        remembered, gameversion = _recall()
-        userid = wanted or (remembered if remembered in available else None) or available[0]
-
-        gameversion = request.args.get("gameversion") or gameversion
         flask_session["USERID"] = userid
         flask_session["GAMEVERSION"] = gameversion
-        _remember(userid, gameversion)
+        chooser.remember(userid, gameversion)
         return redirect("/play.html")
 
     # Guarda quem entrou pela tela de login normal, para o /jogar seguinte.
@@ -293,10 +331,64 @@ def install_quickplay(app, settings: Settings, sessions_module, state_path: str)
             result = original_play(*args, **kwargs)
             userid = flask_session.get("USERID")
             if userid:
-                _remember(userid, flask_session.get("GAMEVERSION") or DEFAULT_GAMEVERSION)
+                chooser.remember(userid, flask_session.get("GAMEVERSION") or DEFAULT_GAMEVERSION)
             return result
 
         app.view_functions["play"] = play_and_remember
+
+    return chooser
+
+
+# --------------------------------------------------------------------------
+# modo projector: jogar sem navegador nenhum
+# --------------------------------------------------------------------------
+
+
+def projector_url(settings: Settings, userid: str, gameversion: str,
+                  server_time: int, friends_info: list) -> str:
+    """Monta a URL que o Flash Player standalone abre direto.
+
+    Sem navegador nao existe <embed>, entao tudo o que o play.html passaria
+    como flashvars vai na query string do proprio SWF - e e de la que o jogo
+    le, via `stage.loaderInfo.parameters`.
+    """
+    base = f"http://{settings.host}:{settings.port}"
+    params = dict(FLASHVARS_FIXOS)
+    params.update({
+        "swftoload": f"/static/socialwars/flash/{gameversion}",
+        "staticUrl": f"{base}/static/socialwars/",
+        "dynamicUrl": f"{base}/dynamic/menvswomen/srvsexwars/",
+        "fb_sig_user": userid,
+        "friendsInfo": json.dumps(friends_info),
+        "serverTime": str(server_time),
+    })
+    if settings.fps:
+        params["_fps"] = str(settings.fps)
+
+    return f"{base}/static/socialwars/flash/SWLoader.swf?" + urlencode(params)
+
+
+def install_projector(app, settings: Settings, sessions_module, engine_module,
+                      chooser: SaveChooser) -> None:
+    """Endpoint que entrega a URL do jogo para o Flash Player standalone."""
+
+    @app.route("/swboost/projector")
+    def swboost_projector():
+        userid, gameversion = chooser.choose(
+            request.args.get("userid"), request.args.get("gameversion")
+        )
+        if userid is None:
+            return {"erro": "nenhum save encontrado; crie uma vila em /new.html"}, 404
+
+        chooser.remember(userid, gameversion)
+        url = projector_url(
+            settings, userid, gameversion,
+            engine_module.timestamp_now(),
+            sessions_module.fb_friends_str(userid),
+        )
+        if request.args.get("redirect"):
+            return redirect(url)
+        return {"url": url, "userid": userid, "gameversion": gameversion}
 
 
 # --------------------------------------------------------------------------

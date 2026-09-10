@@ -21,6 +21,87 @@ E responde a pergunta dos 60 Hz — com um teste, e com a resposta honesta:
 
 ---
 
+## Sem permissão de administrador?
+
+Se a máquina é do trabalho/escola e você não consegue instalar nada, dá para
+jogar assim mesmo. São dois problemas separados, com soluções separadas.
+
+### Problema 1 — "pede administrador para iniciar"
+
+Isso **não vem do jogo nem do executável**. Vem do `pip install` tentando
+gravar no Python do sistema (que fica em `Arquivos de Programas`).
+
+Já está resolvido: o `jogar.bat` cria um ambiente virtual (`.venv`) dentro da
+própria pasta do jogo e instala tudo lá. Nada é gravado fora da pasta e o
+Windows não pede elevação nenhuma.
+
+> Só cuide de **não** deixar a pasta do jogo dentro de `Arquivos de
+> Programas` — ali o Windows bloqueia a gravação dos saves. Área de Trabalho,
+> Documentos, Downloads ou um pendrive funcionam.
+
+### Problema 2 — "não consigo nem instalar o Python"
+
+Use o executável: leva o Python inteiro dentro dele.
+
+1. Aba **Actions** deste repositório → **Build Windows executable** → **Run workflow**
+2. Quando terminar, baixe o artefato **SocialWars-windows**
+3. Descompacte e ponha o `SocialWars.exe` dentro da pasta do jogo
+4. Clique duas vezes
+
+São ~15 MB (os assets do jogo continuam na pasta, não vão para dentro do
+exe). O executável **não pede administrador** — o build nem embute o
+manifesto que pediria, e o próprio workflow verifica isso a cada build.
+
+> Por que o workflow e não um exe pronto aqui? Porque o PyInstaller não faz
+> compilação cruzada: um `.exe` de Windows só pode ser gerado no Windows. O
+> workflow usa uma máquina Windows do GitHub para isso — de graça, e sem
+> precisar de permissão na sua.
+
+Se você tem Python e quer gerar o executável você mesmo:
+
+```bash
+pip install pyinstaller
+python build_exe/construir.py
+```
+
+### Problema 3 — "não consigo baixar/instalar um navegador Flash"
+
+Aí entra o **Flash Player standalone** (o *projector*): é um único
+executável, não instala nada, não pede administrador — e abre o jogo **sem
+navegador nenhum**.
+
+```bash
+python play.py --projector
+```
+
+Antes de sair procurando para baixar, veja se ele **já está na sua máquina**.
+Quem já teve Flash instalado costuma ter isto aqui:
+
+```
+C:\Windows\SysWOW64\Macromed\Flash\FlashPlayerApp.exe
+```
+
+Esse arquivo é um projector completo. O lançador procura por ele sozinho:
+
+```bash
+python play.py --list-browsers
+python play.py --check
+```
+
+Se achar, ele já usa. Se você conseguir o executável do projector de outra
+forma (baixar em casa e trazer num pendrive, por exemplo), é só largá-lo numa
+pasta `browser/` dentro da pasta do jogo — o lançador encontra.
+
+> **Aviso honesto:** o modo projector foi construído a partir do código
+> descompilado do jogo (ele lê os parâmetros de `loaderInfo.parameters`, que
+> no projector vêm da query string) e a URL gerada está testada — o SWF é
+> servido corretamente com todos os 17 parâmetros. Mas **não pude abrir o
+> Flash de verdade** para confirmar, porque o ambiente onde isto foi
+> desenvolvido é Linux sem Flash Player. Se não funcionar de primeira, me
+> diga o que apareceu.
+
+---
+
 ## Instalação
 
 Você precisa da **versão em código-fonte** do jogo (a branch `main` do
@@ -43,10 +124,12 @@ Dentro da pasta do jogo:
 | Sistema | Comando |
 | --- | --- |
 | Windows | clique duplo em **`jogar.bat`** |
+| Windows, sem Python | clique duplo em **`SocialWars.exe`** ([como obter](#problema-2--não-consigo-nem-instalar-o-python)) |
 | GNU/Linux | **`./jogar.sh`** |
 
-Na primeira execução as dependências são instaladas sozinhas. Depois disso o
-servidor sobe, o navegador com Flash abre e você cai direto na sua vila.
+Na primeira execução as dependências são instaladas sozinhas, num ambiente
+virtual dentro da própria pasta — **sem pedir administrador**. Depois disso o
+servidor sobe, o Flash abre e você cai direto na sua vila.
 
 Antes: rodar o executável, abrir um navegador Flash à parte, digitar
 `http://127.0.0.1:5055/`, escolher a vila na tela de login.
@@ -122,6 +205,7 @@ python play.py [opções]
   --browser CAMINHO  navegador específico, ou 'none'
   --no-browser       só sobe o servidor
   --no-quickplay     abre a tela de login em vez da última vila
+  --projector        abre com o Flash Player standalone, sem navegador
   --verbose          mostra o log completo
   --check            diagnostica a instalação e sai
   --list-browsers    lista os navegadores com Flash encontrados
@@ -214,7 +298,7 @@ Para ter os ganhos de desempenho, rode a partir do código-fonte.
 python -m unittest discover -s tests -v
 ```
 
-45 testes, sem dependência dos arquivos do jogo: cobrem a leitura e reescrita
+52 testes, sem dependência dos arquivos do jogo: cobrem a leitura e reescrita
 de SWF, o cache de taxa de quadros, o ajuste do `<embed>`, a configuração, o
 filtro de console e a gravação atômica de saves.
 
@@ -234,6 +318,10 @@ swboost/
   browsers.py            detecção de navegador com Flash
   console.py             filtro do log
   settings.py            swboost.ini, variáveis de ambiente, argumentos
+build_exe/
+  construir.py           gera o SocialWars.exe (PyInstaller)
+.github/workflows/
+  build-windows.yml      gera o .exe do Windows na nuvem
 ferramentas/
   benchmark.py           mede o servidor
   swf_framerate.py       taxa de quadros em disco
@@ -245,7 +333,8 @@ tests/                   testes automatizados
 
 ## Desinstalar
 
-Apague `play.py`, `jogar.bat`, `jogar.sh`, `swboost/`, `ferramentas/`,
+Apague `play.py`, `jogar.bat`, `jogar.sh`, `SocialWars.exe`, `.venv/`,
+`swboost/`, `ferramentas/`, `requirements-swboost.txt`,
 `SWBOOST.md`, `ANALISE_TECNICA.md`, `IDEIAS.md`, `swboost.ini` e
 `boost_cache/`. O jogo volta ao original — nenhum arquivo dele foi tocado
 nem sobrescrito (dentro da pasta do jogo este README se chama `SWBOOST.md`,

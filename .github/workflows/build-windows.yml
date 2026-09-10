@@ -1,0 +1,95 @@
+# Gera o SocialWars.exe do Windows.
+#
+# Existe porque o PyInstaller nao faz compilacao cruzada: um .exe de Windows
+# so pode ser construido no Windows. Quem nao tem um Windows a mao (ou nao
+# tem permissao para instalar Python na maquina) roda este fluxo aqui e baixa
+# o executavel pronto.
+#
+# Como usar:
+#   1. Aba "Actions" do repositorio -> "Build Windows executable"
+#   2. Botao "Run workflow"
+#   3. Quando terminar, baixe o artefato "SocialWars-windows"
+#   4. Descompacte e coloque o SocialWars.exe dentro da pasta do Social Wars
+#      (a que tem server.py e assets/). Clique duas vezes.
+#
+# O executavel gerado NAO pede administrador.
+
+name: Build Windows executable
+
+on:
+  workflow_dispatch:
+    inputs:
+      modo:
+        description: "Formato do executavel"
+        required: false
+        default: onefile
+        type: choice
+        options: [onefile, onedir]
+  push:
+    branches: ["claude/**"]
+    paths:
+      - "play.py"
+      - "swboost/**"
+      - "build_exe/**"
+      - "requirements.txt"
+      - ".github/workflows/build-windows.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+          python -m pip install pyinstaller
+
+      - name: Rodar os testes
+        run: python -m unittest discover -s tests -v
+
+      - name: Construir o executavel
+        run: python build_exe/construir.py ${{ inputs.modo == 'onedir' && '--onedir' || '' }}
+
+      - name: Conferir que nao pede administrador
+        shell: pwsh
+        run: |
+          # O PyInstaller so embute requestedExecutionLevel="requireAdministrator"
+          # quando uac_admin=True. Esta checagem garante que ninguem ligou isso
+          # sem querer: o executavel precisa subir sem elevacao.
+          $exe = Get-ChildItem -Path build_exe/dist -Filter SocialWars.exe -Recurse |
+                 Select-Object -First 1
+          if (-not $exe) { throw "SocialWars.exe nao foi gerado" }
+          $bytes = [System.IO.File]::ReadAllBytes($exe.FullName)
+          $texto = [System.Text.Encoding]::ASCII.GetString($bytes)
+          if ($texto -match "requireAdministrator") {
+            throw "O executavel pede administrador - verifique uac_admin no build"
+          }
+          Write-Host "OK: $($exe.Name), $([math]::Round($exe.Length/1MB,1)) MB, sem pedido de administrador"
+
+      - name: Verificacao rapida do executavel
+        shell: pwsh
+        run: |
+          # Sem a pasta do jogo por perto, o lancador tem que falhar com uma
+          # mensagem clara em vez de travar ou estourar um traceback.
+          $exe = Get-ChildItem -Path build_exe/dist -Filter SocialWars.exe -Recurse |
+                 Select-Object -First 1
+          $saida = & $exe.FullName --version 2>&1 | Out-String
+          Write-Host $saida
+          if ($saida -notmatch "SW Boost") { throw "--version nao respondeu como esperado" }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SocialWars-windows
+          path: build_exe/dist/
+          if-no-files-found: error
+          retention-days: 30

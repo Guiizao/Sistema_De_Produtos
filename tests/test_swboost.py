@@ -19,7 +19,7 @@ import zlib
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from swboost import console, saves, swf, web  # noqa: E402
+from swboost import boost, console, saves, swf, web  # noqa: E402
 from swboost.settings import Settings, load, write_default  # noqa: E402
 
 
@@ -198,6 +198,106 @@ class TestEmbedTweak(unittest.TestCase):
 
     def test_sem_configuracao_nao_mexe_no_tag(self):
         self.assertEqual(web._tweak_embed(self.TAG, Settings()), self.TAG)
+
+
+# --------------------------------------------------------------------------
+# swboost.web - modo projector (jogar sem navegador)
+# --------------------------------------------------------------------------
+
+
+class TestProjectorUrl(unittest.TestCase):
+    def _url(self, **kwargs):
+        cfg = Settings(host="127.0.0.1", port=5055, **kwargs)
+        return web.projector_url(
+            cfg, "vila-1", "Basesec_1.5.4.swf", 1700000000,
+            [{"uid": "2", "pic_square": "x.png"}],
+        )
+
+    def test_carrega_o_swloader_como_raiz(self):
+        self.assertTrue(
+            self._url().startswith(
+                "http://127.0.0.1:5055/static/socialwars/flash/SWLoader.swf?"
+            )
+        )
+
+    def test_leva_todos_os_parametros_que_o_jogo_le(self):
+        from urllib.parse import parse_qs, urlparse
+
+        query = parse_qs(urlparse(self._url()).query)
+        # Sem navegador nao ha flashvars: tudo o que o play.html passaria
+        # precisa estar na query string, que e de onde o Flash le.
+        for chave in ("swftoload", "staticUrl", "dynamicUrl", "fb_sig_user",
+                      "serverTime", "friendsInfo", "language", "user_key",
+                      "skiphash12341", "spdebug", "accessToken"):
+            self.assertIn(chave, query, f"faltou o parametro {chave}")
+        self.assertEqual(query["fb_sig_user"], ["vila-1"])
+        self.assertEqual(query["serverTime"], ["1700000000"])
+        self.assertEqual(query["swftoload"], ["/static/socialwars/flash/Basesec_1.5.4.swf"])
+
+    def test_friends_info_vai_como_json(self):
+        from urllib.parse import parse_qs, urlparse
+
+        query = parse_qs(urlparse(self._url()).query)
+        self.assertEqual(json.loads(query["friendsInfo"][0]),
+                         [{"uid": "2", "pic_square": "x.png"}])
+
+    def test_codifica_valores_com_caracteres_especiais(self):
+        # friendsInfo e JSON e vai cheio de aspas, chaves e dois-pontos.
+        self.assertNotIn('{"uid"', self._url())
+
+    def test_leva_o_fps_quando_o_turbo_esta_ligado(self):
+        self.assertIn("_fps=60", self._url(fps=60))
+        self.assertNotIn("_fps=", self._url(fps=0))
+
+
+# --------------------------------------------------------------------------
+# swboost.boost - build congelado (.exe)
+# --------------------------------------------------------------------------
+
+
+class TestCaminhosCongelados(unittest.TestCase):
+    """O bundle.py do jogo aponta para sys._MEIPASS quando congelado.
+
+    Como o nosso .exe e so o lancador (os assets ficam na pasta do jogo),
+    sem correcao um build congelado procuraria os assets dentro da pasta
+    temporaria do PyInstaller.
+    """
+
+    def setUp(self):
+        self.bundle = types.ModuleType("bundle")
+        self.bundle.TMP_BUNDLED_DIR = "/tmp/_MEIxxxx"
+        self.bundle.ASSETS_DIR = "/tmp/_MEIxxxx/assets"
+        self.bundle.TEMPLATES_DIR = "/tmp/_MEIxxxx/templates"
+        self.bundle.VILLAGES_DIR = "/tmp/_MEIxxxx/villages"
+        self.bundle.QUESTS_DIR = "/tmp/_MEIxxxx/villages/quest"
+        self.bundle.CONFIG_DIR = "/tmp/_MEIxxxx/config"
+        self.bundle.CONFIG_PATCH_DIR = "/tmp/_MEIxxxx/config/patch"
+        self.bundle.STUB_DIR = "/tmp/_MEIxxxx/stub"
+        sys.modules["bundle"] = self.bundle
+
+    def tearDown(self):
+        sys.modules.pop("bundle", None)
+        if hasattr(sys, "frozen"):
+            del sys.frozen
+
+    def test_nao_mexe_em_nada_quando_nao_esta_congelado(self):
+        self.assertFalse(boost.fix_bundle_paths("/jogo"))
+        self.assertEqual(self.bundle.ASSETS_DIR, "/tmp/_MEIxxxx/assets")
+
+    def test_redireciona_para_a_pasta_do_jogo_quando_congelado(self):
+        sys.frozen = True
+        self.assertTrue(boost.fix_bundle_paths(os.path.join(os.sep, "jogo")))
+
+        raiz = os.path.join(os.sep, "jogo")
+        self.assertEqual(self.bundle.ASSETS_DIR, os.path.join(raiz, "assets"))
+        self.assertEqual(self.bundle.TEMPLATES_DIR, os.path.join(raiz, "templates"))
+        self.assertEqual(self.bundle.VILLAGES_DIR, os.path.join(raiz, "villages"))
+        self.assertEqual(self.bundle.QUESTS_DIR, os.path.join(raiz, "villages", "quest"))
+        self.assertEqual(self.bundle.CONFIG_DIR, os.path.join(raiz, "config"))
+        self.assertEqual(self.bundle.CONFIG_PATCH_DIR,
+                         os.path.join(raiz, "config", "patch"))
+        self.assertEqual(self.bundle.STUB_DIR, os.path.join(raiz, "stub"))
+        self.assertNotIn("_MEI", self.bundle.ASSETS_DIR)
 
 
 # --------------------------------------------------------------------------

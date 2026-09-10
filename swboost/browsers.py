@@ -3,10 +3,15 @@
 Objetivo: tirar do jogador o passo manual de "abra um navegador Flash e
 digite http://127.0.0.1:5055". O lancador procura, nesta ordem:
 
-1. um navegador portatil colocado dentro da pasta do jogo (`browser/`);
+1. um navegador ou projector portatil colocado na pasta do jogo (`browser/`);
 2. instalacoes conhecidas de navegadores com Flash;
-3. o Flash Player standalone (projector), que dispensa navegador;
+3. restos de uma instalacao antiga do Flash na propria maquina - inclusive o
+   `FlashPlayerApp.exe`, que o instalador do Flash ActiveX deixa no Windows e
+   e um projector completo;
 4. o navegador padrao do sistema (ultimo recurso - pode nao ter Flash).
+
+O projector e o caminho mais util em maquina sem permissao de administrador:
+e um unico executavel, nao instala nada e abre o jogo sem navegador.
 """
 
 from __future__ import annotations
@@ -25,6 +30,18 @@ LINUX_PPAPI_PATHS = (
     "/usr/lib64/adobe-flashplugin/libpepflashplayer.so",
     "/opt/google/chrome/PepperFlash/libpepflashplayer.so",
 )
+
+# O instalador do Flash ActiveX deixa um projector completo aqui. Em muita
+# maquina corporativa ele ainda existe, e roda sem instalar nada.
+WINDOWS_PROJECTOR_PATHS = (
+    r"%SystemRoot%\SysWOW64\Macromed\Flash\FlashPlayerApp.exe",
+    r"%SystemRoot%\System32\Macromed\Flash\FlashPlayerApp.exe",
+    r"%PROGRAMFILES%\Adobe\flashplayer_32_sa.exe",
+    r"%PROGRAMFILES(X86)%\Adobe\flashplayer_32_sa.exe",
+)
+
+# Nomes que denunciam um projector standalone dentro de `browser/`.
+PROJECTOR_HINTS = ("flashplayer", "flashplayerapp", "_sa", "projector")
 
 
 @dataclass
@@ -51,7 +68,7 @@ def _expand(paths) -> list:
 
 
 def _portable_candidates(game_dir: str) -> list:
-    """Navegador colocado pelo jogador em `<pasta do jogo>/browser/`."""
+    """Navegador ou projector colocado pelo jogador em `<pasta do jogo>/browser/`."""
     found = []
     for folder in (os.path.join(game_dir, "browser"), os.path.join(game_dir, "navegador")):
         if not os.path.isdir(folder):
@@ -59,12 +76,17 @@ def _portable_candidates(game_dir: str) -> list:
         for root, _dirs, files in os.walk(folder):
             for name in files:
                 lowered = name.lower()
-                if lowered.endswith(".exe") or (os.name != "nt" and "." not in name):
-                    if any(key in lowered for key in ("flash", "basilisk", "palemoon",
+                if not (lowered.endswith(".exe") or (os.name != "nt" and "." not in name)):
+                    continue
+                if not any(key in lowered for key in ("flash", "basilisk", "palemoon",
                                                       "waterfox", "chrome", "firefox")):
-                        found.append(Browser(name, os.path.join(root, name)))
+                    continue
+                kind = "projector" if any(h in lowered for h in PROJECTOR_HINTS) else "browser"
+                found.append(Browser(name, os.path.join(root, name), kind=kind))
             if len(found) > 4:
                 break
+    # Projector primeiro: dispensa instalacao e e o caminho sem administrador.
+    found.sort(key=lambda b: 0 if b.kind == "projector" else 1)
     return found
 
 
@@ -85,8 +107,7 @@ def _windows_candidates() -> list:
         for path in _expand([raw]):
             found.append(Browser(name, path))
 
-    for raw in (r"%PROGRAMFILES%\Adobe\flashplayer_32_sa.exe",
-                r"%PROGRAMFILES(X86)%\Adobe\flashplayer_32_sa.exe"):
+    for raw in WINDOWS_PROJECTOR_PATHS:
         for path in _expand([raw]):
             found.append(Browser("Flash Player standalone", path, kind="projector"))
 

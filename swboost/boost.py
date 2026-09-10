@@ -54,8 +54,16 @@ def locate_game_dir(hint: str | None = None) -> str:
         return path
 
     here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    candidates = [
-        os.getcwd(),
+    candidates = [os.getcwd()]
+
+    # Congelado (.exe do PyInstaller): __file__ aponta para a pasta temporaria
+    # de extracao, entao quem vale e o lugar do proprio executavel.
+    if getattr(sys, "frozen", False):
+        exe_dir = os.path.dirname(os.path.abspath(sys.executable))
+        candidates += [exe_dir, os.path.join(exe_dir, "socialwarriors"),
+                       os.path.dirname(exe_dir)]
+
+    candidates += [
         here,
         os.path.join(here, "socialwarriors"),
         os.path.join(os.path.dirname(here), "socialwarriors"),
@@ -107,6 +115,37 @@ def _install_requests_stub() -> bool:
     return True
 
 
+def fix_bundle_paths(game_dir: str) -> bool:
+    """Faz o `bundle.py` do jogo apontar para a pasta do jogo, nao para o exe.
+
+    O bundle.py original comeca assim:
+
+        TMP_BUNDLED_DIR = sys._MEIPASS if getattr(sys, 'frozen', None) else "."
+
+    Isso e correto para o executavel oficial do projeto, que empacota os
+    assets dentro de si. Mas o nosso .exe e so o lancador - os 1,4 GB de
+    assets continuam na pasta do jogo, ao lado dele. Sem esta correcao, um
+    build congelado procuraria assets, templates e vilas dentro da pasta
+    temporaria de extracao do PyInstaller e nao acharia nada.
+
+    Precisa rodar ANTES do `import server`, que e quem importa o bundle.
+    """
+    if not getattr(sys, "frozen", False):
+        return False
+
+    import bundle  # type: ignore
+
+    bundle.TMP_BUNDLED_DIR = game_dir
+    bundle.ASSETS_DIR = os.path.join(game_dir, "assets")
+    bundle.STUB_DIR = os.path.join(game_dir, "stub")
+    bundle.TEMPLATES_DIR = os.path.join(game_dir, "templates")
+    bundle.VILLAGES_DIR = os.path.join(game_dir, "villages")
+    bundle.QUESTS_DIR = os.path.join(bundle.VILLAGES_DIR, "quest")
+    bundle.CONFIG_DIR = os.path.join(game_dir, "config")
+    bundle.CONFIG_PATCH_DIR = os.path.join(bundle.CONFIG_DIR, "patch")
+    return True
+
+
 def load_game(game_dir: str):
     """Importa o `server.py` do jogo (sem iniciar o servidor de desenvolvimento).
 
@@ -118,6 +157,7 @@ def load_game(game_dir: str):
         sys.path.insert(0, game_dir)
 
     stubbed = _install_requests_stub()
+    fix_bundle_paths(game_dir)
 
     try:
         import server  # type: ignore
@@ -155,6 +195,7 @@ def apply(settings: Settings, game_dir: str | None = None) -> Boosted:
     server, stubbed_requests = load_game(game_dir)
 
     import bundle  # type: ignore
+    import engine  # type: ignore
     import get_game_config  # type: ignore
     import sessions  # type: ignore
 
@@ -173,7 +214,10 @@ def apply(settings: Settings, game_dir: str | None = None) -> Boosted:
         "atomic_saves": saves.install(sessions, saves_dir, settings),
     }
     web.install_gzip(app, settings)
-    web.install_quickplay(app, settings, sessions, os.path.join(cache_dir, "last_played.json"))
+    chooser = web.install_quickplay(
+        app, settings, sessions, os.path.join(cache_dir, "last_played.json")
+    )
+    web.install_projector(app, settings, sessions, engine, chooser)
     web.install_play_page(app, settings)
 
     info = {

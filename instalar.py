@@ -23,14 +23,17 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from swboost import boost  # noqa: E402
 
 # O que vai para a pasta do jogo, como (origem, nome no destino).
-# `tests/` fica de fora de proposito. O nosso README vira SWBOOST.md para nao
-# passar por cima do README do proprio projeto Social Warriors.
+# `tests/` fica de fora de proposito. O nosso README vira SWBOOST.md e o nosso
+# requirements.txt vira requirements-swboost.txt: os dois nomes ja existem no
+# projeto Social Warriors e nao podem ser sobrescritos. (O requirements.txt de
+# la lista so o flask, faltando requests e jsonpatch - veja ANALISE_TECNICA.md.)
 PAYLOAD = (
     ("play.py", "play.py"),
     ("swboost", "swboost"),
     ("ferramentas", "ferramentas"),
     ("jogar.bat", "jogar.bat"),
     ("jogar.sh", "jogar.sh"),
+    ("requirements.txt", "requirements-swboost.txt"),
     ("README.md", "SWBOOST.md"),
     ("ANALISE_TECNICA.md", "ANALISE_TECNICA.md"),
     ("IDEIAS.md", "IDEIAS.md"),

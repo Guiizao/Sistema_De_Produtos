@@ -9,3 +9,8 @@ swboost.ini
 saves/
 save_backups/
 *.swf.orig
+
+# Build do executavel
+build_exe/work/
+build_exe/dist/
+build_exe/*.spec
