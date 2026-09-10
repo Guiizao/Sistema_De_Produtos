@@ -1,0 +1,12 @@
+# Dependencias para rodar o Social Wars a partir do codigo-fonte.
+#
+# O requirements.txt do projeto original lista apenas o Flask, mas o
+# server.py tambem importa `requests` e o get_game_config.py importa
+# `jsonpatch`. Sem os tres, uma instalacao limpa quebra logo no import.
+flask
+jsonpatch
+requests
+
+# Servidor HTTP multi-thread. Nao e obrigatorio (o boost cai de volta para o
+# servidor embutido do Flask), mas serve os assets bem mais rapido.
+waitress

@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Gerados em tempo de execucao pelo boost
+boost_cache/
+swboost.ini
+saves/
+save_backups/
+*.swf.orig
