@@ -11,29 +11,56 @@ Não altera nenhum arquivo do jogo.
 
 ## Começando
 
-### 1. Baixe o jogo
+São duas pastas: a do **jogo** e a do **SW Boost**. Você baixa as duas e
+depois copia o boost para dentro do jogo.
+
+### 1. Baixe o SW Boost (esta pasta aqui)
+
+```bash
+git clone -b claude/flash-game-startup-perf-njbjww https://github.com/Guiizao/Sistema_De_Produtos.git sw-boost
+cd sw-boost
+```
+
+> Sem git? Use o botão verde **Code → Download ZIP** aqui no GitHub, extraia
+> e abra o Prompt de Comando dentro da pasta extraída.
+
+### 2. Baixe o jogo
+
+Ainda dentro da pasta `sw-boost`:
 
 ```bash
 git clone https://github.com/AcidCaos/socialwarriors.git
 ```
 
-São ~1,4 GB. Só precisa fazer isso uma vez.
+São ~1,4 GB e demora. Só precisa fazer isso uma vez.
 
-### 2. Copie o SW Boost para dentro da pasta do jogo
+> Já tem o jogo em outro lugar? Pule este passo e, no passo 3, use o caminho
+> completo: `python instalar.py C:\caminho\para\socialwarriors`
+
+### 3. Copie o SW Boost para dentro da pasta do jogo
 
 ```bash
 python instalar.py socialwarriors
 ```
 
-### 3. Jogue
+Se aparecer `can't open file 'instalar.py'`, você está na pasta errada — o
+`instalar.py` fica na pasta do **boost**, não na do jogo.
+
+### 4. Jogue
 
 Agora, **dentro da pasta do jogo**:
+
+```bash
+cd socialwarriors
+```
 
 | Seu caso | O que fazer |
 | --- | --- |
 | Windows, com Python | clique duplo em **`jogar.bat`** |
 | Windows, sem Python | clique duplo em **`SocialWars.exe`** ([como conseguir](#não-tenho-python-e-não-consigo-instalar)) |
 | GNU/Linux | **`./jogar.sh`** |
+
+Ou, no terminal: `python play.py`
 
 Na primeira vez ele prepara tudo sozinho (leva um ou dois minutos). Depois é
 instantâneo: o servidor sobe, o Flash abre e o jogo começa.
