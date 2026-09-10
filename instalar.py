@@ -35,6 +35,7 @@ PAYLOAD = (
     ("jogar.sh", "jogar.sh"),
     ("requirements.txt", "requirements-swboost.txt"),
     ("README.md", "SWBOOST.md"),
+    ("MANUAL.md", "MANUAL.md"),
     ("ANALISE_TECNICA.md", "ANALISE_TECNICA.md"),
     ("IDEIAS.md", "IDEIAS.md"),
 )

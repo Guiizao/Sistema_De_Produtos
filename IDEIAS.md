@@ -22,10 +22,15 @@ Legenda: 🟢 baixo risco · 🟡 exige cuidado · 🔴 pode quebrar o jogo
 | ✅ | `requirements.txt` corrigido |
 | ✅ | Ferramenta de benchmark e de taxa de quadros |
 | ✅ | Gerador de mod de tradução (`ferramentas/gerar_mod_traducao.py`) |
+| ✅ | Executável (`SocialWars.exe`) que dispensa ter Python instalado |
+| ✅ | Instalação sem administrador (ambiente virtual dentro da pasta do jogo) |
+| ✅ | Modo projector: jogar sem navegador nenhum |
 
 ---
 
-## 1. Tradução para português 🟢
+## 1. Tradução para português
+
+🟢 **Baixo risco**
 
 **O jogo já foi feito para isso.** `core/Language.as` declara
 `LANGUAGE_BRASILIAN = "br"` ao lado de espanhol, italiano, francês, alemão,
@@ -62,7 +67,9 @@ deslocamentos de byte — mas é um trabalho à parte.
 
 ---
 
-## 2. Reativar a casa de leilões 🟢
+## 2. Reativar a casa de leilões
+
+🟢 **Baixo risco**
 
 O `server.py` tem três rotas inteiras (`get_bets_list`, `get_bet_detail`,
 `set_bet`) e o `auctions.py` completo — tudo comentado. Existe até um
@@ -73,7 +80,9 @@ comentar de novo.
 
 ---
 
-## 3. Jogar com amigos na mesma rede 🟢
+## 3. Jogar com amigos na mesma rede
+
+🟢 **Baixo risco**
 
 O servidor escuta só em `127.0.0.1`. Trocar para `0.0.0.0` (já é possível com
 `--host 0.0.0.0`) permite que outra pessoa na mesma rede entre pelo IP da sua
@@ -86,7 +95,9 @@ sessão por pessoa (hoje a chave secreta do Flask é a string fixa
 
 ---
 
-## 4. Mods de jogabilidade pelo config 🟢
+## 4. Mods de jogabilidade pelo config
+
+🟢 **Baixo risco**
 
 Todo o balanceamento vem do `config/main.json`, e o sistema de mods aplica
 patches JSON em cima. Já existe um exemplo (`no_hiring_needed.json`).
@@ -107,7 +118,9 @@ o jogador escolher no `mods.txt`.
 
 ---
 
-## 5. Painel de administração pelo navegador 🟡
+## 5. Painel de administração pelo navegador
+
+🟡 **Exige cuidado**
 
 O jogo já tem um painel de depuração completo escondido: digitar
 **SARANDONGA** durante a partida libera comandos como `give` (recursos),
@@ -122,7 +135,9 @@ de forma atômica.
 
 ---
 
-## 6. 60 fps de verdade 🔴
+## 6. 60 fps de verdade
+
+🔴 **Pode quebrar o jogo**
 
 Descrito em detalhe na [análise](ANALISE_TECNICA.md#o-que-seria-preciso-para-60-fps-de-verdade).
 Resumo: exigiria reescrever o laço de jogo em ActionScript para separar
@@ -134,20 +149,30 @@ O modo turbo já entregue cobre quem quer o jogo mais ágil.
 
 ---
 
-## 7. Dispensar o navegador com o Flash projector 🟡
+## 7. Dispensar o navegador com o Flash projector
+
+✅ **Entregue** — falta só a confirmação em uma máquina com Flash
 
 O Flash Player standalone (projector) abre um SWF por URL e lê os parâmetros
 da query string — que é de onde o jogo tira `staticUrl`, `dynamicUrl`,
-`fb_sig_user` e companhia. Em tese daria para abrir o jogo **sem navegador
-nenhum**, o que resolveria de vez o maior obstáculo de instalação.
+`fb_sig_user` e companhia. Isso resolve o maior obstáculo de instalação: dá
+para jogar **sem navegador nenhum**.
 
-O `swboost/browsers.py` já detecta o projector; falta montar a URL com todos
-os parâmetros e testar contra o sandbox de segurança do Flash. Não foi
-possível validar aqui (ambiente sem Flash).
+Implementado em `play.py --projector`: a rota `/swboost/projector` monta a URL
+com os 17 parâmetros e o `browsers.py` procura o projector na máquina —
+inclusive o `FlashPlayerApp.exe` que o instalador do Flash ActiveX deixa no
+Windows.
+
+O que falta: **abrir o Flash de verdade para confirmar**. A URL está testada
+(o SWF é servido corretamente, com o MIME certo e todos os parâmetros), mas o
+ambiente de desenvolvimento é Linux sem Flash Player. Se o sandbox de
+segurança do Flash reclamar de algo, é aqui que vai aparecer.
 
 ---
 
-## 8. Ruffle 🔴
+## 8. Ruffle
+
+🔴 **Pode quebrar o jogo**
 
 O [Ruffle](https://ruffle.rs) roda SWF sem Flash Player. Hoje o suporte a
 ActionScript 3 ainda é parcial, e o Social Wars é AS3 pesado — é bem
@@ -157,7 +182,9 @@ instalação acaba.
 
 ---
 
-## 9. Melhorias de conforto 🟢
+## 9. Melhorias de conforto
+
+🟢 **Baixo risco**
 
 - **Atalho na área de trabalho** criado pelo instalador (Windows).
 - **Tela inicial melhor**: a `login.html` atual é bem crua. Cartões com
@@ -172,7 +199,9 @@ instalação acaba.
 
 ---
 
-## 10. Robustez do servidor 🟡
+## 10. Robustez do servidor
+
+🟡 **Exige cuidado**
 
 - `command.py` faz `assert data_str[64] == ';'`: um pacote malformado derruba
   a requisição com erro 500 em vez de uma mensagem clara.
