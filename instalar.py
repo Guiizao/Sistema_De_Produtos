@@ -31,6 +31,7 @@ from swboost.gamedir import BoostError, locate_game_dir  # noqa: E402
 # la lista so o flask, faltando requests e jsonpatch - veja ANALISE_TECNICA.md.)
 PAYLOAD = (
     ("play.py", "play.py"),
+    ("preparar.py", "preparar.py"),
     ("swboost", "swboost"),
     ("ferramentas", "ferramentas"),
     ("jogar.bat", "jogar.bat"),

@@ -166,6 +166,9 @@ def apply(settings: Settings, game_dir: str | None = None) -> Boosted:
         "atomic_saves": saves.install(sessions, saves_dir, settings),
     }
     web.install_gzip(app, settings)
+    # Antes do quickplay: ele embrulha a view 'play' para lembrar a ultima
+    # vila, entao a troca da pagina precisa ja ter acontecido.
+    applied["tela_cheia"] = web.install_screen_page(app, settings, sessions, engine)
     chooser = web.install_quickplay(
         app, settings, sessions, os.path.join(cache_dir, "last_played.json")
     )

@@ -52,7 +52,12 @@ class Settings:
     quickplay: bool = True
 
     # --- pagina do jogo ---
-    embed_width: str = ""   # vazio = manter o que o jogo ja usa
+    # tela: "boost" usa a pagina nova, que da ao jogo a janela inteira
+    # (Full HD, 2K, o que o monitor tiver). "original" mantem o play.html
+    # do projeto, travado em 760x600.
+    tela: str = "boost"
+    resolucao: str = "janela"
+    embed_width: str = ""   # so valem no modo "original"
     embed_height: str = ""
     wmode: str = ""         # vazio = window (o modo mais rapido em plugin)
 
@@ -153,7 +158,13 @@ browser = {defaults.browser}
 quickplay = {defaults.quickplay}
 
 # --- pagina do jogo ---
-# Vazio mantem o que o jogo ja usa hoje.
+# boost = pagina nova, o jogo ocupa a janela inteira (Full HD, 2K, 4K).
+# original = play.html do projeto, travado em 760x600.
+tela = {defaults.tela}
+# janela (acompanha o navegador), 1920x1080, 2560x1440, 3840x2160,
+# original, ou uma medida sua no formato LARGURAxALTURA.
+resolucao = {defaults.resolucao}
+# Só valem no modo "original".
 embed_width =
 embed_height =
 # Vazio = modo "window" (o mais rapido no plugin). Alternativas: direct, gpu.

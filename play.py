@@ -63,6 +63,11 @@ def parse_args(argv=None) -> argparse.Namespace:
     parser.add_argument("--no-browser", action="store_true", help="nao abrir navegador")
     parser.add_argument("--no-quickplay", action="store_true",
                         help="abrir a tela de login em vez de entrar no ultimo save")
+    parser.add_argument("--resolucao", "--resolution",
+                        help="janela (padrao), 1920x1080, 2560x1440, 3840x2160, "
+                             "original, ou LARGURAxALTURA")
+    parser.add_argument("--tela-original", action="store_true",
+                        help="usar o play.html do projeto original (travado em 760x600)")
     parser.add_argument("--projector", action="store_true",
                         help="abrir com o Flash Player standalone, sem navegador nenhum")
     parser.add_argument("--server", choices=("auto", "waitress", "flask"),
@@ -94,6 +99,10 @@ def build_settings(args: argparse.Namespace, config_dir: str):
         overrides["open_browser"] = False
     if args.no_quickplay:
         overrides["quickplay"] = False
+    if args.resolucao:
+        overrides["resolucao"] = args.resolucao
+    if args.tela_original:
+        overrides["tela"] = "original"
     if args.verbose:
         overrides["quiet"] = False
     return settings_module.load(config_dir, {k: v for k, v in overrides.items() if v is not None})
@@ -328,6 +337,10 @@ def main(argv=None) -> int:
     print()
     print(f"  Servidor ....... http://{cfg.host}:{cfg.port}/")
     print(f"  Taxa de quadros  {cfg.fps or 30} fps" + ("  (turbo)" if cfg.fps else "  (original)"))
+    if cfg.tela.lower() == "boost":
+        print(f"  Resolucao ...... {cfg.resolucao}")
+    else:
+        print(f"  Resolucao ...... pagina original (760x600)")
     print(f"  Cache de assets  {cfg.cache_max_age} s")
 
     if cfg.open_browser:

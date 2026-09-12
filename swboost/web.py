@@ -18,7 +18,7 @@ from urllib.parse import urlencode
 
 from flask import Response, redirect, request, send_file, send_from_directory
 
-from . import swf
+from . import swf, tela
 from .settings import Settings
 
 # Pastas cujo conteudo e servido como SWF "raiz" (o que o navegador embute).
@@ -432,8 +432,46 @@ def _tweak_embed(tag: str, settings: Settings) -> str:
     return result
 
 
+def install_screen_page(app, settings: Settings, sessions_module, engine_module) -> bool:
+    """Troca /play.html por uma pagina que da a janela inteira ao jogo.
+
+    O jogo ja sabe se virar em qualquer resolucao (ver swboost/tela.py); o que
+    o prendia em 760x600 era o <embed> do template original.
+    """
+    if settings.tela.lower() != "boost":
+        return False
+    if "play" not in app.view_functions:
+        return False
+
+    from flask import session as flask_session
+
+    def play_em_tela_cheia():
+        if "USERID" not in flask_session or "GAMEVERSION" not in flask_session:
+            return redirect("/")
+        userid = flask_session["USERID"]
+        if userid not in sessions_module.all_saves_userid():
+            return redirect("/")
+
+        return tela.render(
+            base_url=f"http://{settings.host}:{settings.port}",
+            save_info=sessions_module.save_info(userid),
+            gameversion=flask_session["GAMEVERSION"],
+            server_time=engine_module.timestamp_now(),
+            friends_info=sessions_module.fb_friends_str(userid),
+            resolucao=request.args.get("res") or settings.resolucao,
+            fps=settings.fps,
+            wmode=settings.wmode,
+        )
+
+    app.view_functions["play"] = play_em_tela_cheia
+    return True
+
+
 def install_play_page(app, settings: Settings) -> None:
     """Aplica os ajustes opcionais de exibicao na pagina /play.html."""
+    # No modo "boost" a pagina ja e nossa e ninguem precisa remendar HTML.
+    if settings.tela.lower() == "boost":
+        return
     if not (settings.embed_width or settings.embed_height or settings.wmode or settings.fps):
         return
 

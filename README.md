@@ -1,11 +1,24 @@
 # Social Wars — jogar com um clique
 
 Deixa o [Social Wars](https://github.com/AcidCaos/socialwarriors) mais fácil
-de abrir e mais rápido de carregar. Em vez de ligar o servidor, abrir um
-navegador Flash à parte e digitar um endereço, você dá um clique e cai na sua
-vila.
+de abrir, mais rápido de carregar e **jogável em Full HD ou 2K** — em vez da
+janelinha de 760×600 de sempre.
 
 Não altera nenhum arquivo do jogo.
+
+---
+
+## O jeito mais rápido
+
+Baixe este repositório e dê um clique duplo em **`PREPARAR.bat`**.
+
+Ele acha (ou baixa) o jogo, aplica as melhorias, instala as dependências,
+cria o atalho na Área de Trabalho e confere tudo no fim. Depois é só usar o
+atalho.
+
+No Linux: `python3 preparar.py`
+
+Se preferir entender cada etapa, o passo a passo está logo abaixo.
 
 ---
 
@@ -182,6 +195,49 @@ Se a porta 5055 estiver ocupada, use outra: `python play.py --port 5056`
 
 ---
 
+## Jogar em Full HD ou 2K
+
+Já vem assim: o jogo ocupa a **janela inteira** do navegador. Maximize e
+pronto.
+
+Para fixar uma resolução:
+
+```bash
+python play.py --resolucao 1920x1080     # Full HD
+python play.py --resolucao 2560x1440     # 2K
+python play.py --resolucao 3840x2160     # 4K
+python play.py --resolucao janela        # acompanha a janela (padrão)
+```
+
+Dá para trocar sem reiniciar: passe o mouse no topo da página do jogo e use o
+seletor de resolução. A escolha fica guardada no navegador.
+
+<details>
+<summary>Por que o jogo ficava preso em 760×600 — e por que isso não borra nada</summary>
+
+O limite nunca esteve no jogo. Estava no `<embed>` do `templates/play.html`,
+que fixava 760×600 (o JavaScript da página esticava a largura para 1090, mas
+nunca mexia na altura).
+
+O Social Wars já foi feito para qualquer resolução:
+
+- o palco usa `scaleMode = NO_SCALE`, então uma área maior mostra **mais
+  mapa** em vez de esticar a imagem — não borra, não perde nitidez;
+- `GuiManager.widescreen()` ancora a HUD nas bordas a partir de
+  `stage.stageWidth`/`stageHeight`: barra de baixo em `stageHeight - 125`,
+  slider de zoom em `stageWidth - 24`, objetivos à esquerda;
+- o jogo escuta `Event.RESIZE` e reposiciona HUD, popups e fundo sozinho;
+- existe até um `toggleFullscreen()` embutido, no botão de opções do jogo.
+
+Bastava dar espaço ao plugin.
+
+**A troca:** mais mapa visível = mais unidades desenhadas por quadro. Numa
+batalha grande em 4K o desempenho cai. Se acontecer, use uma resolução menor
+ou a opção "Preencher a janela".
+</details>
+
+---
+
 ## Coisas que dá para fazer
 
 ### Modo turbo
@@ -217,6 +273,7 @@ O SW Boost guarda cópias automáticas em `save_backups/`. Veja
 
 ## O que melhorou
 
+- **Resolução**: Full HD, 2K ou 4K, em vez da janelinha de 760×600
 - **Abrir o jogo**: um clique, em vez de servidor + navegador + login
 - **Carregamento**: a configuração do jogo caiu de 1,0 MB para 60 KB, e os
   assets deixam de ser pedidos de novo a cada partida

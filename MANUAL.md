@@ -10,6 +10,7 @@ Referência completa. Para simplesmente jogar, o [README](README.md) basta.
 - [Opções do lançador](#opções-do-lançador)
 - [Arquivo de configuração](#arquivo-de-configuração)
 - [Desempenho medido](#desempenho-medido)
+- [Resolução: Full HD, 2K e 4K](#resolução-full-hd-2k-e-4k)
 - [Modo turbo em detalhe](#modo-turbo-em-detalhe)
 - [Tradução para português](#tradução-para-português)
 - [Ferramentas](#ferramentas)
@@ -63,6 +64,8 @@ python play.py [opções]
 | Opção | O que faz |
 | --- | --- |
 | `--fps N` | 30 (padrão), 60 ou 120 — veja [modo turbo](#modo-turbo-em-detalhe) |
+| `--resolucao R` | `janela` (padrão), `1920x1080`, `2560x1440`, `3840x2160`, `original`, ou `LARGURAxALTURA` |
+| `--tela-original` | volta ao `play.html` do projeto, travado em 760×600 |
 | `--port N` | porta do servidor (padrão 5055) |
 | `--host ENDEREÇO` | endereço de escuta (padrão 127.0.0.1) |
 | `--browser CAMINHO` | usar um navegador específico, ou `none` |
@@ -136,6 +139,36 @@ cada asset a cada partida — centenas de idas e voltas antes do mapa aparecer.
 - **waitress** no lugar do servidor de desenvolvimento do Werkzeug
 - filtro das linhas repetitivas do console (caro no Windows)
 - gravação de save atômica, com backups rotativos
+
+---
+
+## Resolução: Full HD, 2K e 4K
+
+O que prendia o jogo em 760×600 era o `<embed>` do `templates/play.html`. O
+jogo em si sempre soube se virar em qualquer tamanho:
+
+| Peça | Como se comporta |
+| --- | --- |
+| Palco | `scaleMode = NO_SCALE` — área maior mostra **mais mapa**, sem esticar |
+| Barra de baixo | ancorada em `stageHeight - 125` |
+| Slider de zoom | ancorado em `stageWidth - 24` |
+| Caixa de objetivos | ancorada à esquerda |
+| Popups e fundo | reposicionados por `onWidescreenChange()` no `Event.RESIZE` |
+| Tela cheia | `toggleFullscreen()` embutido, no botão de opções do jogo |
+
+Conferido no papel, reproduzindo o cálculo de `GuiManager.widescreen()`: em
+760×600, 1090×600, 1920×1080 e 2560×1440 todos os elementos caem dentro da
+tela.
+
+A página nova (`swboost/tela.py`) entrega os **mesmos 16 flashvars e o mesmo
+SWF** do `play.html` original — só as dimensões mudam. Isso foi verificado
+comparando as duas páginas servidas lado a lado.
+
+**A troca:** mais mapa visível significa mais unidades desenhadas por quadro.
+Numa batalha grande em 4K o desempenho cai. Use uma resolução menor ou
+"Preencher a janela" se isso incomodar.
+
+Para voltar ao comportamento antigo: `--tela-original`.
 
 ---
 
@@ -311,7 +344,7 @@ também verifica a cada build que o binário não pede administrador.
 python -m unittest discover -s tests -v
 ```
 
-62 testes, sem dependência dos arquivos do jogo. Cobrem a leitura e reescrita
+76 testes, sem dependência dos arquivos do jogo. Cobrem a leitura e reescrita
 de SWF, o cache de taxa de quadros, o ajuste do `<embed>`, a configuração, o
 filtro de console, a gravação atômica de saves, o gerador de tradução, a URL
 do modo projector e os caminhos de um build congelado.
@@ -322,6 +355,8 @@ do modo projector e os caminhos de um build congelado.
 
 ```
 play.py                  lançador — é por aqui que se começa
+preparar.py              instala tudo do zero, em um comando
+PREPARAR.bat             o mesmo, com clique duplo (Windows)
 instalar.py              copia o boost para a pasta do jogo
 jogar.bat / jogar.sh     atalhos de um clique
 swboost/
@@ -330,6 +365,7 @@ swboost/
   swf.py                 leitura e reescrita do cabeçalho SWF
   saves.py               gravação atômica e backups
   browsers.py            detecção de navegador e projector com Flash
+  tela.py                página do jogo em Full HD / 2K / 4K
   gamedir.py             achar a pasta do jogo (sem dependências)
   console.py             filtro do log
   settings.py            swboost.ini, variáveis de ambiente, argumentos

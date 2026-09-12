@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import os
 import struct
+import re
 import sys
 import tempfile
 import types
@@ -19,7 +20,7 @@ import zlib
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from swboost import boost, console, saves, swf, web  # noqa: E402
+from swboost import boost, console, saves, swf, tela, web  # noqa: E402
 from swboost.settings import Settings, load, write_default  # noqa: E402
 
 
@@ -313,6 +314,104 @@ class TestCaminhosCongelados(unittest.TestCase):
                          os.path.join(raiz, "config", "patch"))
         self.assertEqual(self.bundle.STUB_DIR, os.path.join(raiz, "stub"))
         self.assertNotIn("_MEI", self.bundle.ASSETS_DIR)
+
+
+# --------------------------------------------------------------------------
+# swboost.tela - Full HD, 2K e a janela inteira
+# --------------------------------------------------------------------------
+
+
+class TestResolucao(unittest.TestCase):
+    def test_presets_conhecidos(self):
+        for chave in ("janela", "1920x1080", "2560x1440", "3840x2160", "original"):
+            self.assertEqual(tela.normalizar_resolucao(chave), chave)
+
+    def test_janela_nao_fixa_dimensao(self):
+        self.assertEqual(tela.dimensoes("janela"), (None, None))
+
+    def test_full_hd_e_2k(self):
+        self.assertEqual(tela.dimensoes("1920x1080"), (1920, 1080))
+        self.assertEqual(tela.dimensoes("2560x1440"), (2560, 1440))
+
+    def test_aceita_medida_personalizada(self):
+        self.assertEqual(tela.normalizar_resolucao("1720x960"), "1720x960")
+        self.assertEqual(tela.dimensoes("1720x960"), (1720, 960))
+
+    def test_recusa_lixo_e_volta_ao_padrao(self):
+        for ruim in ("", None, "enorme", "99999x99999", "10x10", "axb", "1920x"):
+            self.assertEqual(tela.normalizar_resolucao(ruim), tela.RESOLUCAO_PADRAO)
+
+
+class TestPaginaDoJogo(unittest.TestCase):
+    SAVE = {"userid": "vila-1", "name": "Minha Vila", "level": 12}
+    AMIGOS = [{"uid": "2", "pic_square": "http://x/y.png"}]
+
+    def _pagina(self, **kwargs):
+        return tela.render(
+            base_url="http://127.0.0.1:5055", save_info=self.SAVE,
+            gameversion="Basesec_1.5.4.swf", server_time=1700000000,
+            friends_info=self.AMIGOS, **kwargs,
+        )
+
+    def _embed(self, pagina):
+        return re.search(r"<embed\b.*?>", pagina, re.S | re.I).group(0)
+
+    def test_janela_usa_cem_por_cento(self):
+        tag = self._embed(self._pagina(resolucao="janela"))
+        self.assertIn('width="100%"', tag)
+        self.assertIn('height="100%"', tag)
+
+    def test_resolucao_fixa_vai_para_o_embed(self):
+        tag = self._embed(self._pagina(resolucao="2560x1440"))
+        self.assertIn('width="2560"', tag)
+        self.assertIn('height="1440"', tag)
+
+    def test_leva_os_mesmos_parametros_do_play_html_original(self):
+        # Se a lista divergir do template original, o jogo carrega diferente.
+        from urllib.parse import parse_qs
+        import html as H
+
+        tag = self._embed(self._pagina(resolucao="1920x1080"))
+        fv = H.unescape(re.search(r'flashvars="([^"]*)"', tag).group(1))
+        query = parse_qs(fv)
+        for chave in ("staticUrl", "dynamicUrl", "fb_sig_user", "serverTime",
+                      "friendsInfo", "language", "user_key", "skiphash12341",
+                      "spdebug", "accessToken", "sex", "lastLoggedIn",
+                      "dailyBonus", "forceSyncError", "forceAttackReload",
+                      "forceQuestReload"):
+            self.assertIn(chave, query, f"faltou o flashvar {chave}")
+        self.assertEqual(query["fb_sig_user"], ["vila-1"])
+
+    def test_carrega_o_swloader_com_a_versao_escolhida(self):
+        tag = self._embed(self._pagina())
+        self.assertIn("SWLoader.swf?swftoload=", tag)
+        self.assertIn("Basesec_1.5.4.swf", tag)
+
+    def test_permite_tela_cheia_do_flash(self):
+        # O jogo tem toggleFullscreen embutido; sem este atributo ele nao roda.
+        self.assertIn('allowFullScreen="true"', self._embed(self._pagina()))
+
+    def test_leva_o_fps_do_modo_turbo(self):
+        self.assertIn("_fps=60", self._embed(self._pagina(fps=60)))
+        self.assertNotIn("_fps=", self._embed(self._pagina(fps=0)))
+
+    def test_wmode_so_aparece_quando_pedido(self):
+        self.assertNotIn("wmode", self._embed(self._pagina()))
+        self.assertIn('wmode="direct"', self._embed(self._pagina(wmode="direct")))
+
+    def test_escapa_nome_de_vila_com_html(self):
+        pagina = tela.render(
+            base_url="http://127.0.0.1:5055",
+            save_info={"userid": "v", "name": "<script>alert(1)</script>", "level": 1},
+            gameversion="Basesec_1.5.4.swf", server_time=1, friends_info=[],
+        )
+        self.assertNotIn("<script>alert(1)</script>", pagina)
+        self.assertIn("&lt;script&gt;", pagina)
+
+    def test_pagina_ocupa_a_janela_toda(self):
+        pagina = self._pagina(resolucao="janela")
+        self.assertIn("height: 100%", pagina)
+        self.assertIn("margin: 0", pagina)
 
 
 # --------------------------------------------------------------------------
