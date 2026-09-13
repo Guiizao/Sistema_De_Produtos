@@ -234,7 +234,15 @@ Se a porta 5055 estiver ocupada, use outra: `python play.py --port 5056`
 **Na tela de seleção de vila** você escolhe a resolução e a taxa de quadros
 antes de entrar. É o jeito mais simples.
 
-Já vem ocupando a **janela inteira** do navegador — maximize e pronto.
+Já vem em **"Preencher a janela"**, que é quase sempre o que você quer: o
+jogo acompanha o tamanho do navegador e a HUD se reancora sozinha. Maximize
+(ou F11) e pronto.
+
+> ⚠️ **Resolução fixa maior que a sua janela corta a HUD.** Escolher 2560×1440
+> num monitor Full HD faz a barra de baixo do jogo ficar fora da área visível
+> — o jogo desenha para um palco de 1440px de altura, mas só ~1000px cabem. A
+> página avisa quando isso acontece e oferece a troca em um clique. Para
+> aproveitar todo o monitor, use "Preencher a janela".
 
 Pela linha de comando:
 

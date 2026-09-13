@@ -381,6 +381,21 @@ class TestPaginaDoJogo(unittest.TestCase):
         self.assertIn("var seguirJanela = true", self._pagina(resolucao="janela"))
         self.assertIn("addEventListener('resize'", self._pagina(resolucao="janela"))
 
+    def test_avisa_quando_a_resolucao_nao_cabe_na_janela(self):
+        """Resolucao fixa maior que a janela corta a barra de baixo do jogo.
+
+        Aconteceu na pratica: 2560x1440 escolhido numa tela menor deixou a
+        HUD inferior fora da area visivel, e o jogador so viu que "sumiu".
+        """
+        pagina = self._pagina(resolucao="2560x1440")
+        self.assertIn("checarCorte", pagina)
+        self.assertIn("e maior que esta janela", pagina)
+        self.assertIn("Preencher a janela", pagina)
+        # a checagem so faz sentido em resolucao fixa
+        posicao_guarda = pagina.find("if (!seguirJanela)")
+        self.assertNotEqual(posicao_guarda, -1)
+        self.assertLess(posicao_guarda, pagina.find("checarCorte()"))
+
     def test_resolucao_fixa_nao_persegue_a_janela(self):
         pagina = self._pagina(resolucao="1920x1080")
         self.assertIn("var seguirJanela = false", pagina)

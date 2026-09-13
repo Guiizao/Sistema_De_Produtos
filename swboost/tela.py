@@ -213,6 +213,21 @@ def render(base_url: str, save_info: dict, gameversion: str, server_time: int,
     border-radius: 3px; padding: 2px 4px; font-size: 12px;
   }}
   .espaco {{ margin-left: auto; }}
+  /* Resolucao fixa maior que a janela corta a HUD de baixo. Em vez de deixar
+     o jogador procurando a barra que sumiu, o aviso explica e resolve. */
+  #cortada {{
+    display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 22;
+    align-items: center; gap: 12px; flex-wrap: wrap;
+    padding: 10px 14px; box-sizing: border-box;
+    background: #3a2410; border-top: 1px solid #8a5a1e;
+    color: #ffd9a8; font-size: 13px;
+  }}
+  #cortada button {{
+    padding: 6px 12px; cursor: pointer; font-size: 12px;
+    background: #616807; color: #fffde3;
+    border: 1px solid #8d9612; border-radius: 4px;
+  }}
+  #cortada button#ignorar {{ background: #2a2f0c; color: #d8d3a8; }}
   .dica {{ color: #8a8f5e; }}
   /* Aviso de Flash ausente: sem ele, o jogador so ve uma tela preta. */
   #semflash {{
@@ -264,6 +279,12 @@ def render(base_url: str, save_info: dict, gameversion: str, server_time: int,
     <button type="button" id="fechar">Fechar e continuar mesmo assim</button>
   </div>
 
+  <div id="cortada">
+    <span id="cortadaTexto"></span>
+    <button type="button" id="usarJanela">Preencher a janela</button>
+    <button type="button" id="ignorar">Ignorar</button>
+  </div>
+
   <div id="gatilho"></div>
   <div id="barra">
     <b>{nome}</b> &middot; nivel {nivel}
@@ -308,6 +329,33 @@ def render(base_url: str, save_info: dict, gameversion: str, server_time: int,
   ajustar();
   window.addEventListener('load', ajustar);
   if (seguirJanela) {{ window.addEventListener('resize', ajustar); }}
+
+  // Resolucao fixa maior que a janela: a barra de baixo do jogo fica fora da
+  // area visivel. O jogador so ve "sumiu" - entao vale explicar.
+  if (!seguirJanela) {{
+    var checarCorte = function () {{
+      var jl = window.innerWidth || document.documentElement.clientWidth;
+      var ja = window.innerHeight || document.documentElement.clientHeight;
+      var aviso = document.getElementById('cortada');
+      if ({largura_attr} > jl + 2 || {altura_attr} > ja + 2) {{
+        document.getElementById('cortadaTexto').textContent =
+          'A resolucao escolhida ({largura_attr}x{altura_attr}) e maior que esta janela ('
+          + jl + 'x' + ja + '), entao parte da HUD fica fora da tela.';
+        aviso.style.display = 'flex';
+      }} else {{
+        aviso.style.display = 'none';
+      }}
+    }};
+    checarCorte();
+    window.addEventListener('resize', checarCorte);
+    document.getElementById('usarJanela').onclick = function () {{
+      try {{ localStorage.setItem('swboost.resolucao', 'janela'); }} catch (e) {{}}
+      location.href = '?res=janela';
+    }};
+    document.getElementById('ignorar').onclick = function () {{
+      document.getElementById('cortada').style.display = 'none';
+    }};
+  }}
 
   var seletor = document.getElementById('res');
 
