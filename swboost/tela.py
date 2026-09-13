@@ -145,8 +145,14 @@ def render(base_url: str, save_info: dict, gameversion: str, server_time: int,
         quote=True,
     )
 
-    dim_embed = ('width="100%" height="100%"' if encaixa_na_janela
-                 else f'width="{largura}" height="{altura}"')
+    # Alguns hospedeiros de plugin ignoram o CSS e leem so os atributos, entao
+    # eles precisam ser numeros - nunca porcentagem. No modo janela vai um
+    # palpite inicial que o JavaScript corrige para o tamanho real em seguida.
+    largura_attr = largura or 1280
+    altura_attr = altura or 720
+    dim_embed = f'width="{largura_attr}" height="{altura_attr}"'
+    tamanho_css = ("width: 100vw; height: 100vh;" if encaixa_na_janela
+                   else f"width: {largura}px; height: {altura}px;")
     attr_wmode = f' wmode="{html.escape(wmode, quote=True)}"' if wmode else ""
 
     opcoes = []
@@ -156,6 +162,7 @@ def render(base_url: str, save_info: dict, gameversion: str, server_time: int,
     if chave not in RESOLUCOES:
         opcoes.append(f'<option value="{chave}" selected>{html.escape(chave)} (personalizada)</option>')
 
+    seguir_janela = "true" if encaixa_na_janela else "false"
     nome = html.escape(str(save_info.get("name", "Jogador")))
     nivel = html.escape(str(save_info.get("level", "?")))
     info_fps = f"{fps} fps (turbo)" if fps else "30 fps"
@@ -174,12 +181,18 @@ def render(base_url: str, save_info: dict, gameversion: str, server_time: int,
   }}
   /* O palco centraliza o jogo. Em resolucao fixa maior que a janela, vira
      area rolavel em vez de cortar a HUD. */
+  /* Porcentagem na tag do plugin nao resolve: nem o wrapper nem o palco tem
+     altura definida, entao o plugin cai num tamanho minusculo. vw/vh sao
+     unidades absolutas e nao dependem de ancestral nenhum. */
   #palco {{
     position: absolute; inset: 0;
-    display: flex; align-items: center; justify-content: center;
     overflow: {"hidden" if encaixa_na_janela else "auto"};
+    {"" if encaixa_na_janela else "display: flex; justify-content: center;"}
   }}
-  #jogo {{ display: block; line-height: 0; }}
+  #jogo, #swf {{
+    display: block; border: 0; line-height: 0;
+    {tamanho_css}
+  }}
   /* Faixa fina no topo: passar o mouse revela a barra, para nao roubar
      espaco de tela do jogo. */
   #gatilho {{ position: fixed; top: 0; left: 0; right: 0; height: 8px; z-index: 20; }}
@@ -274,6 +287,27 @@ def render(base_url: str, save_info: dict, gameversion: str, server_time: int,
       painel.style.display = 'none';
     }};
   }}
+
+  // Rede de seguranca: se o plugin ignorar o CSS, os atributos em pixel
+  // resolvem. Tambem mantem o tamanho certo quando a janela muda - o jogo
+  // escuta Event.RESIZE e reposiciona a HUD sozinho.
+  var seguirJanela = {seguir_janela};
+  var jogo = document.getElementById('swf');
+
+  function ajustar() {{
+    var raiz = document.documentElement;
+    var l = seguirJanela ? (window.innerWidth || raiz.clientWidth) : {largura_attr};
+    var a = seguirJanela ? (window.innerHeight || raiz.clientHeight) : {altura_attr};
+    // So mexe quando a diferenca e real, para nao recarregar o filme a toa.
+    if (Math.abs(jogo.clientWidth - l) > 2 || Math.abs(jogo.clientHeight - a) > 2) {{
+      jogo.setAttribute('width', l);
+      jogo.setAttribute('height', a);
+    }}
+  }}
+
+  ajustar();
+  window.addEventListener('load', ajustar);
+  if (seguirJanela) {{ window.addEventListener('resize', ajustar); }}
 
   var seletor = document.getElementById('res');
 

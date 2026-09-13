@@ -356,10 +356,35 @@ class TestPaginaDoJogo(unittest.TestCase):
     def _embed(self, pagina):
         return re.search(r"<embed\b.*?>", pagina, re.S | re.I).group(0)
 
-    def test_janela_usa_cem_por_cento(self):
-        tag = self._embed(self._pagina(resolucao="janela"))
-        self.assertIn('width="100%"', tag)
-        self.assertIn('height="100%"', tag)
+    def test_nunca_usa_porcentagem_na_tag_do_plugin(self):
+        """Regressao: com width="100%" o jogo abria numa caixinha minuscula.
+
+        Porcentagem so resolve contra um ancestral de tamanho definido, e nem
+        o wrapper nem o palco tinham altura. O plugin caia num tamanho
+        intrinseco de ~200px no canto superior esquerdo.
+        """
+        for resolucao in ("janela", "1920x1080", "original"):
+            tag = self._embed(self._pagina(resolucao=resolucao))
+            self.assertNotIn("%", tag, f"porcentagem voltou em {resolucao}")
+
+    def test_janela_usa_unidades_absolutas(self):
+        # vw/vh nao dependem de ancestral nenhum.
+        pagina = self._pagina(resolucao="janela")
+        self.assertIn("width: 100vw", pagina)
+        self.assertIn("height: 100vh", pagina)
+        # e os atributos ainda sao numeros, para plugin que ignora CSS
+        tag = self._embed(pagina)
+        self.assertRegex(tag, r'width="\d+"')
+        self.assertRegex(tag, r'height="\d+"')
+
+    def test_janela_acompanha_o_resize(self):
+        self.assertIn("var seguirJanela = true", self._pagina(resolucao="janela"))
+        self.assertIn("addEventListener('resize'", self._pagina(resolucao="janela"))
+
+    def test_resolucao_fixa_nao_persegue_a_janela(self):
+        pagina = self._pagina(resolucao="1920x1080")
+        self.assertIn("var seguirJanela = false", pagina)
+        self.assertIn("width: 1920px", pagina)
 
     def test_resolucao_fixa_vai_para_o_embed(self):
         tag = self._embed(self._pagina(resolucao="2560x1440"))
