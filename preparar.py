@@ -31,6 +31,7 @@ from swboost.gamedir import BoostError, locate_game_dir  # noqa: E402
 
 RAIZ = os.path.dirname(os.path.abspath(__file__))
 REPO_JOGO = "https://github.com/AcidCaos/socialwarriors.git"
+ZIP_JOGO = "https://github.com/AcidCaos/socialwarriors/archive/refs/heads/main.zip"
 PASTA_PADRAO = "socialwarriors"
 
 
@@ -57,8 +58,11 @@ def perguntar_sim(pergunta: str, padrao: bool = True) -> bool:
 def baixar_jogo(destino: str) -> str | None:
     if not shutil.which("git"):
         print("  [!] O git nao esta instalado, entao nao da para baixar automaticamente.")
-        print("      Instale em https://git-scm.com/downloads e rode de novo,")
-        print(f"      ou baixe o jogo a mao de {REPO_JOGO}")
+        print("\n      Duas saidas:")
+        print("      1) instale o git em https://git-scm.com/downloads e rode de novo")
+        print("      2) baixe o jogo pelo navegador (~1,4 GB), extraia, e rode")
+        print("         este preparar.py de novo apontando para a pasta:")
+        print(f"         {ZIP_JOGO}")
         return None
 
     print(f"  Baixando o jogo em: {destino}")

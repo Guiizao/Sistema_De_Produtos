@@ -8,6 +8,20 @@ Não altera nenhum arquivo do jogo.
 
 ---
 
+## Links para baixar
+
+| O que | Link |
+| --- | --- |
+| **SW Boost** (este projeto, 85 KB) | [baixar o .zip](https://github.com/Guiizao/Sistema_De_Produtos/archive/refs/heads/claude/flash-game-startup-perf-njbjww.zip) |
+| **O jogo** (~1,4 GB) | [baixar o .zip](https://github.com/AcidCaos/socialwarriors/archive/refs/heads/main.zip) &middot; ou `git clone https://github.com/AcidCaos/socialwarriors.git` |
+| **Navegador com Flash** | [FlashBrowser](https://github.com/radubirsan/FlashBrowser/releases/latest) |
+| **Python** (se não tiver) | [python.org/downloads](https://www.python.org/downloads/) — marque *Add python.exe to PATH* |
+
+O `PREPARAR.bat` baixa o jogo sozinho se você tiver o
+[git](https://git-scm.com/downloads) instalado.
+
+---
+
 ## O jeito mais rápido
 
 Baixe este repositório e dê um clique duplo em **`PREPARAR.bat`**.
@@ -54,6 +68,9 @@ Trabalho. **Menos** dentro de *Arquivos de Programas*.
 git clone https://github.com/AcidCaos/socialwarriors.git
 ```
 
+Sem git? [Baixe o .zip](https://github.com/AcidCaos/socialwarriors/archive/refs/heads/main.zip)
+e extraia.
+
 São ~1,4 GB e demora. Só precisa fazer isso uma vez.
 
 ### 2. Baixe o SW Boost
@@ -64,8 +81,9 @@ Ao lado do jogo, na mesma pasta-mãe:
 git clone -b claude/flash-game-startup-perf-njbjww https://github.com/Guiizao/Sistema_De_Produtos.git sw-boost
 ```
 
-> Sem git? Use o botão verde **Code → Download ZIP** aqui no GitHub e extraia
-> para uma pasta chamada `sw-boost`.
+> Sem git? [Baixe o .zip](https://github.com/Guiizao/Sistema_De_Produtos/archive/refs/heads/claude/flash-game-startup-perf-njbjww.zip),
+> extraia, e renomeie a pasta para `sw-boost` (o GitHub dá a ela um nome
+> comprido, `Sistema_De_Produtos-claude-flash-...`).
 
 ### 3. Instale
 
