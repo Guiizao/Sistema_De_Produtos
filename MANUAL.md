@@ -10,6 +10,7 @@ Referência completa. Para simplesmente jogar, o [README](README.md) basta.
 - [Opções do lançador](#opções-do-lançador)
 - [Arquivo de configuração](#arquivo-de-configuração)
 - [Desempenho medido](#desempenho-medido)
+- [Tela de entrada](#tela-de-entrada)
 - [Resolução: Full HD, 2K e 4K](#resolução-full-hd-2k-e-4k)
 - [Modo turbo em detalhe](#modo-turbo-em-detalhe)
 - [Tradução para português](#tradução-para-português)
@@ -139,6 +140,23 @@ cada asset a cada partida — centenas de idas e voltas antes do mapa aparecer.
 - **waitress** no lugar do servidor de desenvolvimento do Werkzeug
 - filtro das linhas repetitivas do console (caro no Windows)
 - gravação de save atômica, com backups rotativos
+
+---
+
+## Tela de entrada
+
+Substitui o `templates/login.html` do projeto. Além da vila e da versão do
+jogo, deixa escolher **resolução** e **taxa de quadros** antes de entrar. As
+escolhas ficam na sessão e valem para a partida, sem reiniciar o servidor.
+
+Precedência da taxa de quadros: parâmetro na URL → escolha na tela de entrada
+→ `swboost.ini`/`--fps`.
+
+As duas páginas (entrada e jogo) detectam a falta de Flash e explicam o que
+fazer. Sem isso, um navegador moderno mostra apenas uma tela preta, sem erro
+nenhum. A detecção é um palpite — nem todo navegador com Flash anuncia o
+mimetype do mesmo jeito — então o aviso nunca bloqueia: dá para fechar e
+seguir.
 
 ---
 
@@ -344,7 +362,7 @@ também verifica a cada build que o binário não pede administrador.
 python -m unittest discover -s tests -v
 ```
 
-76 testes, sem dependência dos arquivos do jogo. Cobrem a leitura e reescrita
+87 testes, sem dependência dos arquivos do jogo. Cobrem a leitura e reescrita
 de SWF, o cache de taxa de quadros, o ajuste do `<embed>`, a configuração, o
 filtro de console, a gravação atômica de saves, o gerador de tradução, a URL
 do modo projector e os caminhos de um build congelado.
@@ -366,6 +384,7 @@ swboost/
   saves.py               gravação atômica e backups
   browsers.py            detecção de navegador e projector com Flash
   tela.py                página do jogo em Full HD / 2K / 4K
+  entrada.py             tela de seleção de vila, resolução e Hz
   gamedir.py             achar a pasta do jogo (sem dependências)
   console.py             filtro do log
   settings.py            swboost.ini, variáveis de ambiente, argumentos

@@ -23,6 +23,7 @@ from __future__ import annotations
 import html
 import json
 
+
 # Resolucoes oferecidas no seletor. "janela" acompanha o tamanho do navegador,
 # que e o que realmente entrega Full HD/2K no monitor de quem joga.
 RESOLUCOES = {
@@ -36,6 +37,29 @@ RESOLUCOES = {
 }
 
 RESOLUCAO_PADRAO = "janela"
+
+# Bloco compartilhado com a pagina do jogo: detecta a falta de Flash e diz o
+# que fazer. A checagem e um palpite (nem todo navegador com Flash anuncia o
+# mimetype do mesmo jeito), entao o aviso nunca bloqueia nada - da para
+# fechar e seguir.
+AVISO_FLASH_JS = """
+function temFlash() {
+  try {
+    if (navigator.mimeTypes && navigator.mimeTypes['application/x-shockwave-flash']) return true;
+    if (navigator.plugins) {
+      for (var i = 0; i < navigator.plugins.length; i++) {
+        var nome = (navigator.plugins[i].name || '').toLowerCase();
+        if (nome.indexOf('flash') !== -1 || nome.indexOf('shockwave') !== -1) return true;
+      }
+    }
+    if (window.ActiveXObject) {
+      try { new window.ActiveXObject('ShockwaveFlash.ShockwaveFlash'); return true; } catch (e) {}
+    }
+  } catch (e) { return true; }  /* na duvida, nao atrapalha */
+  return false;
+}
+"""
+
 
 # Mesmos flashvars do templates/play.html do projeto original. O `brk=0` entre
 # os parametros nao e lido pelo jogo, mas fica para manter o formato identico
@@ -177,6 +201,28 @@ def render(base_url: str, save_info: dict, gameversion: str, server_time: int,
   }}
   .espaco {{ margin-left: auto; }}
   .dica {{ color: #8a8f5e; }}
+  /* Aviso de Flash ausente: sem ele, o jogador so ve uma tela preta. */
+  #semflash {{
+    display: none; position: fixed; inset: 0; z-index: 30;
+    background: rgba(16, 19, 10, .97); color: #f2edc4;
+    padding: 32px; overflow: auto;
+    flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; line-height: 1.6;
+  }}
+  #semflash h2 {{ color: #ffb457; margin: 0 0 14px; }}
+  #semflash p {{ margin: 0 0 12px; max-width: 560px; }}
+  #semflash .url {{
+    font-family: consolas, monospace; font-size: 16px; color: #e9dd51;
+    background: #2a2f0c; border: 1px solid #616807; border-radius: 5px;
+    padding: 8px 14px;
+  }}
+  #semflash .miudo {{ color: #8a8f5e; font-size: 12px; }}
+  #semflash a {{ color: #e9dd51; }}
+  #semflash button {{
+    margin-top: 18px; padding: 9px 16px; cursor: pointer;
+    background: #2a2f0c; color: #f2edc4;
+    border: 1px solid #616807; border-radius: 5px; font-size: 13px;
+  }}
 </style>
 </head>
 <body>
@@ -191,6 +237,20 @@ def render(base_url: str, save_info: dict, gameversion: str, server_time: int,
     </object>
   </div>
 
+  <div id="semflash">
+    <h2>Este navegador nao tem Flash</h2>
+    <p>O Social Wars e um jogo em Flash. Sem um navegador que rode Flash, esta
+       tela fica preta - sem mensagem de erro, so preta.</p>
+    <p><b>O que fazer:</b> instale o
+       <a href="https://github.com/radubirsan/FlashBrowser/releases/latest"
+          target="_blank" rel="noopener">FlashBrowser</a>
+       e abra neste endereco:</p>
+    <p class="url" id="url"></p>
+    <p class="miudo">O servidor aqui continua rodando normalmente - o que falta
+       e so o Flash do lado do navegador.</p>
+    <button type="button" id="fechar">Fechar e continuar mesmo assim</button>
+  </div>
+
   <div id="gatilho"></div>
   <div id="barra">
     <b>{nome}</b> &middot; nivel {nivel}
@@ -203,7 +263,18 @@ def render(base_url: str, save_info: dict, gameversion: str, server_time: int,
   </div>
 
 <script>
+{AVISO_FLASH_JS}
 (function () {{
+  // Navegador sem Flash mostra so preto. Melhor explicar do que deixar no escuro.
+  if (!temFlash()) {{
+    document.getElementById('url').textContent = location.origin + '/';
+    var painel = document.getElementById('semflash');
+    painel.style.display = 'flex';
+    document.getElementById('fechar').onclick = function () {{
+      painel.style.display = 'none';
+    }};
+  }}
+
   var seletor = document.getElementById('res');
 
   // A escolha fica no navegador: o servidor nao precisa guardar estado.

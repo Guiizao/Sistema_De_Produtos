@@ -20,7 +20,7 @@ import zlib
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from swboost import boost, console, saves, swf, tela, web  # noqa: E402
+from swboost import boost, console, entrada, saves, swf, tela, web  # noqa: E402
 from swboost.settings import Settings, load, write_default  # noqa: E402
 
 
@@ -412,6 +412,77 @@ class TestPaginaDoJogo(unittest.TestCase):
         pagina = self._pagina(resolucao="janela")
         self.assertIn("height: 100%", pagina)
         self.assertIn("margin: 0", pagina)
+
+
+# --------------------------------------------------------------------------
+# swboost.entrada - tela de selecao de vila
+# --------------------------------------------------------------------------
+
+
+class TestTelaDeEntrada(unittest.TestCase):
+    SAVES = [{"userid": "a1", "name": "Minha Vila", "level": 12, "xp": 3400},
+             {"userid": "b2", "name": "Outra", "level": 3, "xp": 90}]
+
+    def test_lista_as_vilas(self):
+        pagina = entrada.render(self.SAVES, "alpha 0.02")
+        self.assertIn('value="a1"', pagina)
+        self.assertIn("Minha Vila", pagina)
+        self.assertIn("nivel 12", pagina)
+
+    def test_oferece_resolucao_e_taxa_de_quadros(self):
+        pagina = entrada.render(self.SAVES, "alpha 0.02")
+        self.assertIn('name="res"', pagina)
+        self.assertIn('name="fps"', pagina)
+        for chave in ("1920x1080", "2560x1440", "janela"):
+            self.assertIn(f'value="{chave}"', pagina)
+        for taxa in ("0", "60", "120"):
+            self.assertIn(f'value="{taxa}"', pagina)
+
+    def test_marca_as_escolhas_atuais(self):
+        pagina = entrada.render(self.SAVES, "v", resolucao="2560x1440", fps=60)
+        self.assertIn('value="2560x1440" selected', pagina)
+        self.assertIn('value="60" selected', pagina)
+
+    def test_avisa_quando_nao_ha_vila(self):
+        pagina = entrada.render([], "alpha 0.02")
+        self.assertIn("Nenhuma vila salva", pagina)
+        self.assertIn("/new.html", pagina)
+        self.assertNotIn('name="USERID"', pagina)
+
+    def test_escapa_nome_de_vila_com_html(self):
+        pagina = entrada.render(
+            [{"userid": "x", "name": "<img onerror=alert(1)>", "level": 1, "xp": 0}], "v"
+        )
+        self.assertNotIn("<img onerror", pagina)
+        self.assertIn("&lt;img", pagina)
+
+    def test_traz_o_aviso_de_flash_ausente(self):
+        # Sem isto, um navegador moderno mostra so uma tela preta.
+        pagina = entrada.render(self.SAVES, "v")
+        self.assertIn("function temFlash", pagina)
+        self.assertIn("semflash", pagina)
+
+
+class TestFpsEscolhido(unittest.TestCase):
+    """Precedencia: URL > escolha na tela de entrada > swboost.ini."""
+
+    def test_url_ganha_de_tudo(self):
+        self.assertEqual(
+            web._fps_escolhido(Settings(fps=120), {"SWBOOST_FPS": 60}, "30"), 30)
+
+    def test_sessao_ganha_da_configuracao(self):
+        self.assertEqual(web._fps_escolhido(Settings(fps=120), {"SWBOOST_FPS": 60}, None), 60)
+
+    def test_cai_na_configuracao(self):
+        self.assertEqual(web._fps_escolhido(Settings(fps=120), {}, None), 120)
+
+    def test_zero_e_uma_escolha_valida(self):
+        # 0 = manter os 30 fps originais, e nao "nao escolhido".
+        self.assertEqual(web._fps_escolhido(Settings(fps=120), {"SWBOOST_FPS": 0}, None), 0)
+
+    def test_ignora_valor_invalido(self):
+        for ruim in ("abc", "-5", "999", None, ""):
+            self.assertEqual(web._fps_escolhido(Settings(fps=60), {}, ruim), 60)
 
 
 # --------------------------------------------------------------------------

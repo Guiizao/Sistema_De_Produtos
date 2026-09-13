@@ -150,6 +150,7 @@ def apply(settings: Settings, game_dir: str | None = None) -> Boosted:
     import engine  # type: ignore
     import get_game_config  # type: ignore
     import sessions  # type: ignore
+    import version  # type: ignore
 
     app = server.app
     if not app.secret_key:
@@ -169,6 +170,9 @@ def apply(settings: Settings, game_dir: str | None = None) -> Boosted:
     # Antes do quickplay: ele embrulha a view 'play' para lembrar a ultima
     # vila, entao a troca da pagina precisa ja ter acontecido.
     applied["tela_cheia"] = web.install_screen_page(app, settings, sessions, engine)
+    applied["tela_entrada"] = web.install_entry_page(
+        app, settings, sessions, version.version_name
+    )
     chooser = web.install_quickplay(
         app, settings, sessions, os.path.join(cache_dir, "last_played.json")
     )

@@ -18,7 +18,7 @@ from urllib.parse import urlencode
 
 from flask import Response, redirect, request, send_file, send_from_directory
 
-from . import swf, tela
+from . import entrada, swf, tela
 from .settings import Settings
 
 # Pastas cujo conteudo e servido como SWF "raiz" (o que o navegador embute).
@@ -432,6 +432,51 @@ def _tweak_embed(tag: str, settings: Settings) -> str:
     return result
 
 
+def _fps_escolhido(settings: Settings, sessao, da_url) -> int:
+    """Taxa de quadros da partida: URL > escolha na tela de entrada > config."""
+    for valor in (da_url, sessao.get("SWBOOST_FPS"), settings.fps):
+        if valor in (None, ""):
+            continue
+        try:
+            numero = int(valor)
+        except (TypeError, ValueError):
+            continue
+        if 0 <= numero <= 120:
+            return numero
+    return 0
+
+
+def install_entry_page(app, settings: Settings, sessions_module, version_name: str) -> bool:
+    """Troca a tela de login por uma com resolucao e taxa de quadros."""
+    if settings.tela.lower() != "boost" or "login" not in app.view_functions:
+        return False
+
+    from flask import session as flask_session
+
+    original_login = app.view_functions["login"]
+
+    def entrada_boost():
+        if request.method == "POST":
+            # Guarda as escolhas antes de delegar: o login original cuida de
+            # USERID/GAMEVERSION e do redirecionamento.
+            flask_session["SWBOOST_RES"] = tela.normalizar_resolucao(request.form.get("res"))
+            flask_session["SWBOOST_FPS"] = _fps_escolhido(settings, {}, request.form.get("fps"))
+            return original_login()
+
+        flask_session.pop("USERID", None)
+        flask_session.pop("GAMEVERSION", None)
+        sessions_module.load_saves()
+        return entrada.render(
+            saves_info=sessions_module.all_saves_info(),
+            versao=version_name,
+            resolucao=flask_session.get("SWBOOST_RES") or settings.resolucao,
+            fps=_fps_escolhido(settings, flask_session, None),
+        )
+
+    app.view_functions["login"] = entrada_boost
+    return True
+
+
 def install_screen_page(app, settings: Settings, sessions_module, engine_module) -> bool:
     """Troca /play.html por uma pagina que da a janela inteira ao jogo.
 
@@ -458,8 +503,10 @@ def install_screen_page(app, settings: Settings, sessions_module, engine_module)
             gameversion=flask_session["GAMEVERSION"],
             server_time=engine_module.timestamp_now(),
             friends_info=sessions_module.fb_friends_str(userid),
-            resolucao=request.args.get("res") or settings.resolucao,
-            fps=settings.fps,
+            resolucao=(request.args.get("res")
+                       or flask_session.get("SWBOOST_RES")
+                       or settings.resolucao),
+            fps=_fps_escolhido(settings, flask_session, request.args.get("fps")),
             wmode=settings.wmode,
         )
 

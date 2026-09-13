@@ -201,6 +201,22 @@ numa pasta chamada `browser/` dentro da pasta do jogo. O lançador encontra.
 **3. Instale um navegador com Flash.** As opções estão no `FLASH.md` do
 projeto original.
 
+### "A tela fica toda preta"
+
+**É o navegador, não o jogo.** Chrome, Edge e Firefox atuais removeram o Flash
+— o Chrome em 2021. Sem Flash, o `<embed>` não desenha nada e você vê só o
+fundo preto da página. Nenhum erro aparece, porque tecnicamente nada falhou.
+
+O servidor está funcionando (repare que ele carregou as quests e ficou
+escutando). Falta o Flash do lado do navegador.
+
+**A solução:** instale o
+[FlashBrowser](https://github.com/radubirsan/FlashBrowser/releases/latest) e
+abra **o mesmo endereço** nele: `http://127.0.0.1:5055/`
+
+A partir desta versão o próprio jogo detecta isso e mostra um aviso
+explicando, em vez de deixar a tela preta sem dizer nada.
+
 ### "Abriu, mas o jogo não carrega"
 
 Abra o endereço manualmente no seu navegador Flash:
@@ -215,10 +231,12 @@ Se a porta 5055 estiver ocupada, use outra: `python play.py --port 5056`
 
 ## Jogar em Full HD ou 2K
 
-Já vem assim: o jogo ocupa a **janela inteira** do navegador. Maximize e
-pronto.
+**Na tela de seleção de vila** você escolhe a resolução e a taxa de quadros
+antes de entrar. É o jeito mais simples.
 
-Para fixar uma resolução:
+Já vem ocupando a **janela inteira** do navegador — maximize e pronto.
+
+Pela linha de comando:
 
 ```bash
 python play.py --resolucao 1920x1080     # Full HD
@@ -291,7 +309,8 @@ O SW Boost guarda cópias automáticas em `save_backups/`. Veja
 
 ## O que melhorou
 
-- **Resolução**: Full HD, 2K ou 4K, em vez da janelinha de 760×600
+- **Resolução e Hz**: escolhidos na tela de entrada; Full HD, 2K ou 4K em vez
+  da janelinha de 760×600
 - **Abrir o jogo**: um clique, em vez de servidor + navegador + login
 - **Carregamento**: a configuração do jogo caiu de 1,0 MB para 60 KB, e os
   assets deixam de ser pedidos de novo a cada partida
