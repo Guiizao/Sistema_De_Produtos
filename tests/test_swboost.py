@@ -778,6 +778,44 @@ class TestGeradorTraducao(unittest.TestCase):
 
 
 # --------------------------------------------------------------------------
+# swboost.gamedir - mensagens de erro uteis
+# --------------------------------------------------------------------------
+
+
+class TestErroDePastaDoJogo(unittest.TestCase):
+    """Cada engano tem uma saida diferente, entao a mensagem tem que separar."""
+
+    def test_pasta_inexistente_sugere_baixar(self):
+        with self.assertRaises(boost.BoostError) as erro:
+            boost.locate_game_dir(os.path.join(os.sep, "nao", "existe", "mesmo"))
+        texto = str(erro.exception)
+        self.assertIn("nao existe", texto)
+        self.assertIn("PREPARAR.bat", texto)
+
+    def test_pasta_errada_diz_o_que_falta(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaises(boost.BoostError) as erro:
+                boost.locate_game_dir(tmp)
+            texto = str(erro.exception)
+            self.assertIn("existe, mas nao e a do Social Wars", texto)
+            self.assertIn("server.py", texto)
+
+    def test_arquivo_em_vez_de_pasta(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            arquivo = os.path.join(tmp, "algo.txt")
+            open(arquivo, "w").close()
+            with self.assertRaises(boost.BoostError) as erro:
+                boost.locate_game_dir(arquivo)
+            self.assertIn("arquivo, nao uma pasta", str(erro.exception))
+
+    def test_aceita_a_pasta_certa(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            for marcador in boost.GAME_MARKERS:
+                open(os.path.join(tmp, marcador), "w").close()
+            self.assertEqual(boost.locate_game_dir(tmp), os.path.abspath(tmp))
+
+
+# --------------------------------------------------------------------------
 # instalar.py - caminho digitado ou arrastado pelo usuario
 # --------------------------------------------------------------------------
 

@@ -27,14 +27,35 @@ def _looks_like_game(path: str) -> bool:
     return all(os.path.isfile(os.path.join(path, marker)) for marker in GAME_MARKERS)
 
 
+DICA_BAIXAR = (
+    "Ainda nao baixou o jogo neste computador?\n"
+    "  - Windows: clique duas vezes em PREPARAR.bat (ele baixa sozinho)\n"
+    "  - Linux:   python3 preparar.py\n"
+    "  - ou baixe a mao: "
+    "https://github.com/AcidCaos/socialwarriors/archive/refs/heads/main.zip"
+)
+
+
 def locate_game_dir(hint: str | None = None) -> str:
     """Descobre onde esta o codigo-fonte do Social Wars."""
     if hint:
         path = os.path.abspath(os.path.expanduser(hint))
+
+        # Separar os casos: "a pasta nem existe" e um problema bem diferente
+        # de "a pasta existe mas nao e o jogo", e a solucao tambem e outra.
+        if not os.path.exists(path):
+            raise BoostError(f"A pasta '{path}' nao existe neste computador.\n\n{DICA_BAIXAR}")
+        if not os.path.isdir(path):
+            raise BoostError(f"'{path}' e um arquivo, nao uma pasta.")
+
         if not _looks_like_game(path):
+            faltando = [m for m in GAME_MARKERS
+                        if not os.path.isfile(os.path.join(path, m))]
             raise BoostError(
-                f"'{path}' nao parece a pasta do Social Wars "
-                f"(esperava encontrar {', '.join(GAME_MARKERS)})."
+                f"A pasta '{path}' existe, mas nao e a do Social Wars.\n"
+                f"Falta: {', '.join(faltando)}\n"
+                f"A pasta certa e a que tem o server.py e a pasta assets.\n\n"
+                f"{DICA_BAIXAR}"
             )
         return path
 
